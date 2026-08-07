@@ -78,6 +78,31 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// Registro
+app.post('/api/auth/registro', (req, res) => {
+  try {
+    const { nombre, email, contrasena } = req.body;
+    if (!email || !contrasena || !nombre) {
+      return res.status(400).json({ error: 'Campos requeridos faltantes' });
+    }
+
+    const passwordHash = bcrypt.hashSync(contrasena, 10);
+    const stmt = db.prepare(`
+      INSERT INTO usuarios (email, contrasena, nombre, perfil)
+      VALUES (?, ?, ?, ?)
+    `);
+    const result = stmt.run(email, passwordHash, nombre, 'miembro');
+
+    const token = jwt.sign({ id: result.lastInsertRowid, email, perfil: 'miembro' }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ success: true, token, usuario: { id: result.lastInsertRowid, email, nombre, perfil: 'miembro' } });
+  } catch (error) {
+    if (error.message.includes('UNIQUE')) {
+      return res.status(400).json({ error: 'Email ya registrado' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Usuarios
 app.get('/api/usuarios', verificarToken, (req, res) => {
   try {
