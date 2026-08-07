@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comunité - Gobernanza para Condominios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hero-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+  </style>
+</head>
+<body class="bg-gray-50" id="app">
+
+  <!-- LANDING -->
+  <div id="landing" class="min-h-screen">
+    <nav class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
+          <span class="text-xl font-bold text-gray-900">Comunité</span>
+        </div>
+        <div class="flex space-x-4">
+          <button onclick="showLogin()" class="px-4 py-2 text-purple-600 font-medium hover:bg-purple-50 rounded-lg">Ingresar</button>
+          <button onclick="showRegister()" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700">Registrarse</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="hero-bg text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h1 class="text-5xl font-bold mb-4">Gobernanza Digital para Condominios</h1>
+            <p class="text-xl text-purple-100 mb-8">Gestiona actas, votaciones, usuarios y documentos de forma segura, transparente y legal.</p>
+            <div class="flex space-x-4">
+              <button onclick="showRegister()" class="px-8 py-3 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100">Comenzar gratis</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
+              <div class="text-4xl mb-2">📋</div>
+              <h3 class="font-bold mb-2">Actas</h3>
+              <p class="text-sm text-purple-100">Redacción y firmas digitales</p>
+            </div>
+            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
+              <div class="text-4xl mb-2">🗳️</div>
+              <h3 class="font-bold mb-2">Votaciones</h3>
+              <p class="text-sm text-purple-100">Registro legal de hora y usuario</p>
+            </div>
+            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
+              <div class="text-4xl mb-2">👥</div>
+              <h3 class="font-bold mb-2">Usuarios</h3>
+              <p class="text-sm text-purple-100">Perfiles diferenciados</p>
+            </div>
+            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
+              <div class="text-4xl mb-2">📊</div>
+              <h3 class="font-bold mb-2">Reportes</h3>
+              <p class="text-sm text-purple-100">Informes automáticos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <h2 class="text-3xl font-bold text-center mb-12">¿Por qué Comunité?</h2>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+          <div class="text-4xl mb-4">🔒</div>
+          <h3 class="text-lg font-bold mb-2">Seguridad</h3>
+          <p class="text-gray-600">Autenticación JWT, encriptación de datos, bitácora completa.</p>
+        </div>
+        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+          <div class="text-4xl mb-4">⚖️</div>
+          <h3 class="text-lg font-bold mb-2">Cumplimiento Legal</h3>
+          <p class="text-gray-600">Timestamps verificables, registros íntegros, documentos protocalizados.</p>
+        </div>
+        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+          <div class="text-4xl mb-4">📱</div>
+          <h3 class="text-lg font-bold mb-2">Acceso Flexible</h3>
+          <p class="text-gray-600">Responsive, accesible desde cualquier dispositivo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-page" class="hidden min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">C</div>
+        <h2 class="text-2xl font-bold text-gray-900">Ingresar a Comunité</h2>
+      </div>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input type="email" id="login-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent" placeholder="admin@comunite.cl">
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+          <input type="password" id="login-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent" placeholder="••••••••">
+        </div>
+        <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700">Ingresar</button>
+      </form>
+      <div class="mt-4 text-center text-sm text-gray-600">
+        ¿No tienes cuenta? <button onclick="showRegister()" class="text-purple-600 font-bold hover:underline">Regístrate aquí</button>
+      </div>
+      <div id="login-error" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden text-sm"></div>
+      <div class="mt-6 p-4 bg-blue-50 rounded-lg text-sm border border-blue-200">
+        <p class="font-bold mb-2 text-blue-900">🔓 Demo</p>
+        <p class="text-blue-800"><code class="bg-blue-100 px-2 py-1 rounded">admin@comunite.cl</code></p>
+        <p class="text-blue-800"><code class="bg-blue-100 px-2 py-1 rounded">admin123</code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="register-page" class="hidden min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">C</div>
+        <h2 class="text-2xl font-bold text-gray-900">Crear cuenta</h2>
+      </div>
+      <form id="register-form" onsubmit="handleRegister(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nombre Completo</label>
+          <input type="text" id="register-nombre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent">
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input type="email" id="register-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent">
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+          <input type="password" id="register-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent">
+        </div>
+        <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700">Registrarse</button>
+      </form>
+      <div class="mt-4 text-center text-sm text-gray-600">
+        ¿Ya tienes cuenta? <button onclick="showLogin()" class="text-purple-600 font-bold hover:underline">Inicia sesión</button>
+      </div>
+      <div id="register-error" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden text-sm"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
+    <nav class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
+          <span class="text-xl font-bold text-gray-900">Comunité</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-sm text-gray-600" id="user-info"></span>
+          <button onclick="logout()" class="px-4 py-2 text-red-600 font-medium hover:bg-red-50 rounded-lg">Salir</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex space-x-4 mb-8 border-b border-gray-200">
+        <button onclick="switchTab('usuarios')" class="tab-btn active px-4 py-2 font-bold text-purple-600 border-b-2 border-purple-600">👥 Usuarios</button>
+        <button onclick="switchTab('auditoria')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📊 Auditoría</button>
+      </div>
+
+      <!-- USUARIOS -->
+      <div id="tab-usuarios" class="tab-content">
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
+          <button onclick="showNewUserForm()" class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Nuevo Usuario</button>
+        </div>
+
+        <div id="new-user-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+          <h3 class="text-lg font-bold mb-4">Crear Nuevo Usuario</h3>
+          <form onsubmit="handleNewUser(event)">
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                <input type="text" id="new-nombre" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input type="email" id="new-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                <input type="password" id="new-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Perfil</label>
+                <select id="new-perfil" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                  <option value="miembro">Miembro</option>
+                  <option value="secretario">Secretario</option>
+                  <option value="tesorero">Tesorero</option>
+                  <option value="presidente">Presidente</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex space-x-4">
+              <button type="submit" class="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Crear</button>
+              <button type="button" onclick="hideNewUserForm()" class="px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Nombre</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Email</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Perfil</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Estado</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usuarios-tbody" class="divide-y divide-gray-200">
+              <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AUDITORIA -->
+      <div id="tab-auditoria" class="tab-content hidden">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Usuario</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Acción</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Fecha/Hora</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Detalles</th>
+              </tr>
+            </thead>
+            <tbody id="auditoria-tbody" class="divide-y divide-gray-200">
+              <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : '';
+    let token = localStorage.getItem('token');
+    let currentUser = localStorage.getItem('currentUser') ? JSON.parse(localStorage.getItem('currentUser')) : null;
+
+    if (token && currentUser) showDashboard();
+
+    function showLogin() {
+      setVisibility({ landing: false, loginPage: true, registerPage: false, dashboard: false });
+    }
+
+    function showRegister() {
+      setVisibility({ landing: false, loginPage: false, registerPage: true, dashboard: false });
+    }
+
+    function showDashboard() {
+      setVisibility({ landing: false, loginPage: false, registerPage: false, dashboard: true });
+      document.getElementById('user-info').textContent = `${currentUser.nombre} (${currentUser.perfil})`;
+      loadUsuarios();
+      if (currentUser.perfil === 'admin') loadAuditoria();
+    }
+
+    function setVisibility(state) {
+      document.getElementById('landing').classList.toggle('hidden', !state.landing);
+      document.getElementById('login-page').classList.toggle('hidden', !state.loginPage);
+      document.getElementById('register-page').classList.toggle('hidden', !state.registerPage);
+      document.getElementById('dashboard').classList.toggle('hidden', !state.dashboard);
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('text-purple-600', 'border-purple-600');
+        el.classList.add('text-gray-600');
+      });
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      event.target.classList.remove('text-gray-600');
+      event.target.classList.add('text-purple-600', 'border-purple-600');
+    }
+
+    function showNewUserForm() { document.getElementById('new-user-form').classList.remove('hidden'); }
+    function hideNewUserForm() { document.getElementById('new-user-form').classList.add('hidden'); }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const contrasena = document.getElementById('login-password').value;
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, contrasena })
+        });
+        const data = await response.json();
+        if (data.success) {
+          token = data.token;
+          currentUser = data.usuario;
+          localStorage.setItem('token', token);
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          showDashboard();
+        } else {
+          showError('login-error', data.error);
+        }
+      } catch (error) {
+        showError('login-error', 'Error de conexión');
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const nombre = document.getElementById('register-nombre').value;
+      const email = document.getElementById('register-email').value;
+      const contrasena = document.getElementById('register-password').value;
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/registro`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, email, contrasena })
+        });
+        const data = await response.json();
+        if (data.success) {
+          token = data.token;
+          currentUser = data.usuario;
+          localStorage.setItem('token', token);
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          showDashboard();
+        } else {
+          showError('register-error', data.error);
+        }
+      } catch (error) {
+        showError('register-error', 'Error de conexión');
+      }
+    }
+
+    function logout() {
+      token = null;
+      currentUser = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+      setVisibility({ landing: true, loginPage: false, registerPage: false, dashboard: false });
+    }
+
+    async function loadUsuarios() {
+      try {
+        const response = await fetch(`${API_BASE}/api/usuarios`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const usuarios = await response.json();
+        document.getElementById('usuarios-tbody').innerHTML = usuarios.map(u => `
+          <tr>
+            <td class="px-6 py-4 font-medium text-gray-900">${u.nombre}</td>
+            <td class="px-6 py-4 text-gray-600">${u.email}</td>
+            <td class="px-6 py-4"><span class="px-3 py-1 bg-purple-100 text-purple-900 text-sm font-bold rounded-full">${u.perfil}</span></td>
+            <td class="px-6 py-4"><span class="px-3 py-1 ${u.activo ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900'} text-sm font-bold rounded-full">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td class="px-6 py-4"><button onclick="deleteUsuario(${u.id})" class="text-red-600 hover:underline text-sm">Desactivar</button></td>
+          </tr>
+        `).join('');
+      } catch (error) { console.error(error); }
+    }
+
+    async function handleNewUser(e) {
+      e.preventDefault();
+      const nombre = document.getElementById('new-nombre').value;
+      const email = document.getElementById('new-email').value;
+      const contrasena = document.getElementById('new-password').value;
+      const perfil = document.getElementById('new-perfil').value;
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/registro`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ nombre, email, contrasena, perfil })
+        });
+        const data = await response.json();
+        if (data.success) {
+          hideNewUserForm();
+          loadUsuarios();
+          document.getElementById('new-nombre').value = '';
+          document.getElementById('new-email').value = '';
+          document.getElementById('new-password').value = '';
+        }
+      } catch (error) { console.error(error); }
+    }
+
+    async function deleteUsuario(id) {
+      if (!confirm('¿Desactivar este usuario?')) return;
+      try {
+        await fetch(`${API_BASE}/api/usuarios/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadUsuarios();
+      } catch (error) { console.error(error); }
+    }
+
+    async function loadAuditoria() {
+      try {
+        const response = await fetch(`${API_BASE}/api/auditoria`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const logs = await response.json();
+        document.getElementById('auditoria-tbody').innerHTML = logs.map(log => `
+          <tr>
+            <td class="px-6 py-4 font-medium text-gray-900">${log.nombre || 'Sistema'}</td>
+            <td class="px-6 py-4 text-gray-600">${log.accion}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">${new Date(log.fecha).toLocaleString('es-CL')}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${log.detalles || '-'}</td>
+          </tr>
+        `).join('');
+      } catch (error) { console.error(error); }
+    }
+
+    function showError(elementId, message) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+  </script>
+</body>
+</html>
