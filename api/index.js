@@ -105,6 +105,38 @@ function initDb() {
       FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
       UNIQUE(acta_id, usuario_id)
     );
+
+    CREATE TABLE IF NOT EXISTS votaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      tipo TEXT DEFAULT 'abierta',
+      estado TEXT DEFAULT 'abierta',
+      usuario_creador_id INTEGER NOT NULL,
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fecha_cierre DATETIME,
+      FOREIGN KEY(usuario_creador_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS opciones_votacion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      votacion_id INTEGER NOT NULL,
+      numero INTEGER,
+      titulo TEXT NOT NULL,
+      FOREIGN KEY(votacion_id) REFERENCES votaciones(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS votos_usuarios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      votacion_id INTEGER NOT NULL,
+      opcion_id INTEGER NOT NULL,
+      usuario_id INTEGER NOT NULL,
+      fecha_voto DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(votacion_id, usuario_id),
+      FOREIGN KEY(votacion_id) REFERENCES votaciones(id),
+      FOREIGN KEY(opcion_id) REFERENCES opciones_votacion(id),
+      FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    );
   `);
 
   try {
@@ -429,6 +461,170 @@ app.put('/api/temas/:id', verificarToken, (req, res) => {
 app.delete('/api/temas/:id', verificarToken, (req, res) => {
   try {
     db.prepare(`DELETE FROM temas_actas WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== VOTACIONES (Módulo independiente) ==========
+
+// Crear votación
+app.post('/api/votaciones', verificarToken, (req, res) => {
+  try {
+    const { titulo, descripcion, tipo, opciones } = req.body;
+    if (!titulo || !opciones || opciones.length < 2) {
+      return res.status(400).json({ error: 'Título y mínimo 2 opciones requeridas' });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO votaciones (titulo, descripcion, tipo, usuario_creador_id, estado)
+      VALUES (?, ?, ?, ?, 'abierta')
+    `);
+    const result = stmt.run(titulo, descripcion || '', tipo || 'abierta', req.usuarioId);
+    const votacionId = result.lastInsertRowid;
+
+    // Guardar opciones
+    const stmtOpciones = db.prepare(`INSERT INTO opciones_votacion (votacion_id, numero, titulo) VALUES (?, ?, ?)`);
+    opciones.forEach((opt, idx) => {
+      stmtOpciones.run(votacionId, idx + 1, opt);
+    });
+
+    registrarAuditoria(req.usuarioId, 'crear_votacion', `Votación: ${titulo}`);
+    res.json({ success: true, id: votacionId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Listar votaciones
+app.get('/api/votaciones', verificarToken, (req, res) => {
+  try {
+    const votaciones = db.prepare(`
+      SELECT v.*, u.nombre as creador_nombre, COUNT(vu.id) as total_votos
+      FROM votaciones v
+      LEFT JOIN usuarios u ON v.usuario_creador_id = u.id
+      LEFT JOIN votos_usuarios vu ON v.id = vu.votacion_id
+      GROUP BY v.id
+      ORDER BY v.fecha_creacion DESC
+    `).all();
+
+    const resultado = votaciones.map(v => {
+      const opciones = db.prepare(`SELECT * FROM opciones_votacion WHERE votacion_id = ? ORDER BY numero ASC`).all(v.id);
+      const misVotos = db.prepare(`
+        SELECT ov.id, ov.titulo FROM votos_usuarios vu
+        JOIN opciones_votacion ov ON vu.opcion_id = ov.id
+        WHERE vu.votacion_id = ? AND vu.usuario_id = ?
+      `).all(v.id, req.usuarioId);
+
+      return {
+        ...v,
+        opciones,
+        miVoto: misVotos.length > 0 ? misVotos[0].id : null
+      };
+    });
+
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Obtener votación específica
+app.get('/api/votaciones/:id', verificarToken, (req, res) => {
+  try {
+    const votacion = db.prepare(`SELECT * FROM votaciones WHERE id = ?`).get(req.params.id);
+    if (!votacion) return res.status(404).json({ error: 'Votación no encontrada' });
+
+    const opciones = db.prepare(`SELECT * FROM opciones_votacion WHERE votacion_id = ? ORDER BY numero ASC`).all(req.params.id);
+
+    const opcionesConVotos = opciones.map(opt => {
+      const votos = db.prepare(`SELECT COUNT(*) as cantidad FROM votos_usuarios WHERE opcion_id = ?`).get(opt.id);
+      return { ...opt, cantidad_votos: votos.cantidad };
+    });
+
+    const misVotos = db.prepare(`
+      SELECT ov.id FROM votos_usuarios vu
+      JOIN opciones_votacion ov ON vu.opcion_id = ov.id
+      WHERE vu.votacion_id = ? AND vu.usuario_id = ?
+    `).all(req.params.id, req.usuarioId);
+
+    res.json({
+      ...votacion,
+      opciones: opcionesConVotos,
+      miVoto: misVotos.length > 0 ? misVotos[0].id : null,
+      total_votos: opcionesConVotos.reduce((sum, o) => sum + o.cantidad_votos, 0)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Votar
+app.post('/api/votaciones/:id/votar', verificarToken, (req, res) => {
+  try {
+    const { opcion_id } = req.body;
+    if (!opcion_id) return res.status(400).json({ error: 'Opción requerida' });
+
+    // Verificar que la votación está abierta
+    const votacion = db.prepare(`SELECT estado FROM votaciones WHERE id = ?`).get(req.params.id);
+    if (votacion.estado === 'cerrada') {
+      return res.status(400).json({ error: 'Votación cerrada' });
+    }
+
+    // Verificar que el usuario no haya votado ya
+    const votoExistente = db.prepare(`
+      SELECT id FROM votos_usuarios WHERE votacion_id = ? AND usuario_id = ?
+    `).get(req.params.id, req.usuarioId);
+
+    if (votoExistente) {
+      return res.status(400).json({ error: 'Ya has votado en esta votación' });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO votos_usuarios (votacion_id, opcion_id, usuario_id)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(req.params.id, opcion_id, req.usuarioId);
+
+    registrarAuditoria(req.usuarioId, 'votar', `Votó en votación ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cerrar votación (solo creador o admin)
+app.put('/api/votaciones/:id/cerrar', verificarToken, (req, res) => {
+  try {
+    const votacion = db.prepare(`SELECT usuario_creador_id FROM votaciones WHERE id = ?`).get(req.params.id);
+
+    if (req.usuarioPerfil !== 'admin' && votacion.usuario_creador_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    db.prepare(`UPDATE votaciones SET estado = 'cerrada', fecha_cierre = CURRENT_TIMESTAMP WHERE id = ?`).run(req.params.id);
+    registrarAuditoria(req.usuarioId, 'cerrar_votacion', `Cerró votación ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar votación (solo creador o admin)
+app.delete('/api/votaciones/:id', verificarToken, (req, res) => {
+  try {
+    const votacion = db.prepare(`SELECT usuario_creador_id FROM votaciones WHERE id = ?`).get(req.params.id);
+
+    if (req.usuarioPerfil !== 'admin' && votacion.usuario_creador_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    db.prepare(`DELETE FROM votos_usuarios WHERE votacion_id = ?`).run(req.params.id);
+    db.prepare(`DELETE FROM opciones_votacion WHERE votacion_id = ?`).run(req.params.id);
+    db.prepare(`DELETE FROM votaciones WHERE id = ?`).run(req.params.id);
+
+    registrarAuditoria(req.usuarioId, 'eliminar_votacion', `Eliminó votación ${req.params.id}`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
