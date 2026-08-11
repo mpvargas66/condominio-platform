@@ -163,6 +163,7 @@
       <div class="flex space-x-4 mb-8 border-b border-gray-200">
         <button onclick="switchTab('usuarios')" class="tab-btn active px-4 py-2 font-bold text-purple-600 border-b-2 border-purple-600">👥 Usuarios</button>
         <button onclick="switchTab('actas')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📋 Actas</button>
+        <button onclick="switchTab('votaciones')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🗳️ Votaciones</button>
         <button onclick="switchTab('auditoria')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📊 Auditoría</button>
       </div>
 
@@ -614,6 +615,97 @@
         </div>
       </div>
 
+      <!-- VOTACIONES TAB -->
+      <div id="tab-votaciones" class="tab-content hidden">
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">Votaciones y Encuestas</h2>
+          <button onclick="showNewVotacionForm()" class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Nueva Votación</button>
+        </div>
+
+        <!-- Formulario Crear Votación -->
+        <div id="new-votacion-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+          <h3 class="text-lg font-bold mb-4">Crear Nueva Votación</h3>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Título de la Votación</label>
+            <input type="text" id="votacion-titulo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: ¿Aprobar presupuesto 2026?">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+            <textarea id="votacion-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Detalles de la votación"></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+            <select id="votacion-tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              <option value="abierta">Votación Abierta</option>
+              <option value="cerrada">Votación Cerrada (privada)</option>
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Opciones</label>
+            <div id="opciones-container">
+              <div class="flex gap-2 mb-2">
+                <input type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg opcion-input" placeholder="Opción 1">
+                <button onclick="removeOpcion(this)" class="px-4 py-2 bg-red-200 text-red-700 font-bold rounded-lg hover:bg-red-300">✕</button>
+              </div>
+              <div class="flex gap-2 mb-2">
+                <input type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg opcion-input" placeholder="Opción 2">
+                <button onclick="removeOpcion(this)" class="px-4 py-2 bg-red-200 text-red-700 font-bold rounded-lg hover:bg-red-300">✕</button>
+              </div>
+            </div>
+            <button onclick="agregarOpcion()" class="mt-2 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">+ Agregar Opción</button>
+          </div>
+
+          <div class="flex space-x-4">
+            <button onclick="crearVotacion()" class="flex-1 px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Crear Votación</button>
+            <button onclick="hideNewVotacionForm()" class="flex-1 px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Tabla de Votaciones -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Pregunta</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Opciones</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Votos</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Mi Voto</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Estado</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="votaciones-tbody" class="divide-y divide-gray-200">
+              <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Cargando votaciones...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MODAL: Votar -->
+      <div id="votacion-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+          <h3 id="votacion-modal-titulo" class="text-xl font-bold mb-4"></h3>
+          <p id="votacion-modal-descripcion" class="text-gray-600 mb-4 text-sm"></p>
+
+          <div id="votacion-modal-opciones" class="space-y-2 mb-6">
+            <!-- Se llena dinámicamente -->
+          </div>
+
+          <div id="votacion-modal-resultados" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+            <!-- Se llena dinámicamente -->
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="confirmarVoto()" id="btn-votar" class="flex-1 px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Votar</button>
+            <button onclick="cerrarVotacionModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -656,6 +748,7 @@
       document.getElementById('user-info').textContent = `${currentUser.nombre} (${currentUser.perfil})`;
       loadUsuarios();
       loadActas();
+      loadVotaciones();
       if (currentUser.perfil === 'admin') loadAuditoria();
     }
 
@@ -1351,6 +1444,223 @@
       });
 
       renderTemasLista();
+    }
+
+    // ========== VOTACIONES ==========
+    let votacionSeleccionadaId = null;
+    let opcionSeleccionadaId = null;
+
+    function showNewVotacionForm() {
+      document.getElementById('new-votacion-form').classList.remove('hidden');
+    }
+
+    function hideNewVotacionForm() {
+      document.getElementById('new-votacion-form').classList.add('hidden');
+      limpiarFormularioVotacion();
+    }
+
+    function agregarOpcion() {
+      const container = document.getElementById('opciones-container');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2 mb-2';
+      div.innerHTML = `
+        <input type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg opcion-input" placeholder="Nueva opción">
+        <button onclick="removeOpcion(this)" class="px-4 py-2 bg-red-200 text-red-700 font-bold rounded-lg hover:bg-red-300">✕</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeOpcion(btn) {
+      const inputs = document.querySelectorAll('.opcion-input');
+      if (inputs.length > 2) {
+        btn.parentElement.remove();
+      } else {
+        alert('Mínimo 2 opciones requeridas');
+      }
+    }
+
+    async function crearVotacion() {
+      const titulo = document.getElementById('votacion-titulo').value.trim();
+      const descripcion = document.getElementById('votacion-descripcion').value.trim();
+      const tipo = document.getElementById('votacion-tipo').value;
+
+      const opcionInputs = document.querySelectorAll('.opcion-input');
+      const opciones = Array.from(opcionInputs).map(input => input.value.trim()).filter(v => v);
+
+      if (!titulo) {
+        alert('Título requerido');
+        return;
+      }
+
+      if (opciones.length < 2) {
+        alert('Mínimo 2 opciones');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/votaciones`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ titulo, descripcion, tipo, opciones })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          hideNewVotacionForm();
+          loadVotaciones();
+          alert('✅ Votación creada');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al crear votación');
+      }
+    }
+
+    function limpiarFormularioVotacion() {
+      document.getElementById('votacion-titulo').value = '';
+      document.getElementById('votacion-descripcion').value = '';
+      document.getElementById('votacion-tipo').value = 'abierta';
+      document.getElementById('opciones-container').innerHTML = `
+        <div class="flex gap-2 mb-2">
+          <input type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg opcion-input" placeholder="Opción 1">
+          <button onclick="removeOpcion(this)" class="px-4 py-2 bg-red-200 text-red-700 font-bold rounded-lg hover:bg-red-300">✕</button>
+        </div>
+        <div class="flex gap-2 mb-2">
+          <input type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg opcion-input" placeholder="Opción 2">
+          <button onclick="removeOpcion(this)" class="px-4 py-2 bg-red-200 text-red-700 font-bold rounded-lg hover:bg-red-300">✕</button>
+        </div>
+      `;
+    }
+
+    async function loadVotaciones() {
+      try {
+        const response = await fetch(`${API_BASE}/api/votaciones`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const votaciones = await response.json();
+
+        document.getElementById('votaciones-tbody').innerHTML = votaciones.map(v => {
+          const miVotoTexto = v.miVoto ? '✅ Votado' : '⏳ Sin votar';
+          const estadoBadge = v.estado === 'abierta'
+            ? '<span class="px-3 py-1 bg-green-100 text-green-900 text-xs font-bold rounded">Abierta</span>'
+            : '<span class="px-3 py-1 bg-red-100 text-red-900 text-xs font-bold rounded">Cerrada</span>';
+
+          return `
+            <tr>
+              <td class="px-6 py-4 font-medium text-gray-900">${v.titulo}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">${v.opciones.length} opciones</td>
+              <td class="px-6 py-4 text-sm text-gray-600">${v.total_votos}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">${miVotoTexto}</td>
+              <td class="px-6 py-4">${estadoBadge}</td>
+              <td class="px-6 py-4 flex gap-2">
+                <button onclick="abrirVotacionModal(${v.id})" class="text-blue-600 hover:underline text-sm font-bold">
+                  ${v.estado === 'abierta' ? '🗳️ Votar' : '📊 Ver'}
+                </button>
+                ${v.usuario_creador_id === currentUser?.id || currentUser?.perfil === 'admin' ? `
+                  <button onclick="cerrarVotacion(${v.id})" class="text-orange-600 hover:underline text-sm font-bold">Cerrar</button>
+                  <button onclick="eliminarVotacion(${v.id})" class="text-red-600 hover:underline text-sm font-bold">Eliminar</button>
+                ` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (error) { console.error(error); }
+    }
+
+    async function abrirVotacionModal(votacionId) {
+      try {
+        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const votacion = await response.json();
+
+        votacionSeleccionadaId = votacionId;
+        document.getElementById('votacion-modal-titulo').textContent = votacion.titulo;
+        document.getElementById('votacion-modal-descripcion').textContent = votacion.descripcion || '';
+
+        const opcionesDiv = document.getElementById('votacion-modal-opciones');
+        opcionesDiv.innerHTML = votacion.opciones.map(opt => `
+          <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-purple-50">
+            <input type="radio" name="opcion" value="${opt.id}" onchange="setOpcionSeleccionada(${opt.id})"
+              ${votacion.miVoto === opt.id ? 'checked disabled' : votacion.estado === 'cerrada' ? 'disabled' : ''}>
+            <span class="ml-3 text-gray-900">${opt.titulo}</span>
+            <span class="ml-auto text-xs text-gray-600">(${opt.cantidad_votos} votos)</span>
+          </label>
+        `).join('');
+
+        document.getElementById('btn-votar').style.display = votacion.miVoto || votacion.estado === 'cerrada' ? 'none' : 'block';
+
+        document.getElementById('votacion-modal').classList.remove('hidden');
+      } catch (error) { console.error(error); }
+    }
+
+    function setOpcionSeleccionada(opcionId) {
+      opcionSeleccionadaId = opcionId;
+    }
+
+    async function confirmarVoto() {
+      if (!opcionSeleccionadaId) {
+        alert('Selecciona una opción');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/votaciones/${votacionSeleccionadaId}/votar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ opcion_id: opcionSeleccionadaId })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          cerrarVotacionModal();
+          loadVotaciones();
+          alert('✅ Voto registrado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al votar');
+      }
+    }
+
+    function cerrarVotacionModal() {
+      document.getElementById('votacion-modal').classList.add('hidden');
+      votacionSeleccionadaId = null;
+      opcionSeleccionadaId = null;
+    }
+
+    async function cerrarVotacion(votacionId) {
+      if (!confirm('¿Cerrar esta votación?')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}/cerrar`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          loadVotaciones();
+          alert('✅ Votación cerrada');
+        }
+      } catch (error) { console.error(error); }
+    }
+
+    async function eliminarVotacion(votacionId) {
+      if (!confirm('¿Eliminar esta votación?')) return;
+
+      try {
+        await fetch(`${API_BASE}/api/votaciones/${votacionId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadVotaciones();
+        alert('✅ Votación eliminada');
+      } catch (error) { console.error(error); }
     }
   </script>
 </body>
