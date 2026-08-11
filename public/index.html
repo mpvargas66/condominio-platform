@@ -297,6 +297,83 @@
               </div>
             </div>
 
+            <!-- 👥 ASISTENTES + ROL (Solo Asamblea) -->
+            <div id="section-asistentes-basica" class="hidden mb-6 bg-blue-50 p-6 rounded-lg border border-blue-200">
+              <h4 class="font-bold text-lg mb-4">👥 Asistentes y Roles</h4>
+
+              <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
+                <h5 class="font-bold mb-4">Agregar Asistente</h5>
+
+                <div class="grid md:grid-cols-4 gap-3 mb-4">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
+                    <input type="text" id="asistente-nombre" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="Nombre completo">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">RUT</label>
+                    <input type="text" id="asistente-rut" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="12.345.678-9">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Rol</label>
+                    <select id="asistente-rol" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                      <option value="">Seleccionar rol</option>
+                      <option value="presidente">Presidente</option>
+                      <option value="secretario">Secretario</option>
+                      <option value="tesorero">Tesorero</option>
+                      <option value="director">Director</option>
+                      <option value="copropietario">Copropietario</option>
+                      <option value="administrador">Administrador</option>
+                      <option value="abogado">Abogado</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  <div class="flex items-end">
+                    <button type="button" onclick="agregarAsistente()" class="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 text-sm">+ Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto mb-4">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-100 border-b">
+                    <tr>
+                      <th class="px-4 py-2 text-left font-bold">Nombre</th>
+                      <th class="px-4 py-2 text-left font-bold">RUT</th>
+                      <th class="px-4 py-2 text-left font-bold">Rol</th>
+                      <th class="px-4 py-2 text-center font-bold">Presente</th>
+                      <th class="px-4 py-2 text-center font-bold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="asistentes-tbody" class="divide-y">
+                    <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500 text-sm">Sin asistentes agregados</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div id="quorum-summary" class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-300 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="font-bold text-blue-900">📊 Quórum</p>
+                    <p class="text-blue-800 text-sm">
+                      Presentes: <span id="quorum-presentes" class="font-bold">0</span> / Total: <span id="quorum-total" class="font-bold">0</span>
+                      (<span id="quorum-porcentaje" class="font-bold">0</span>%)
+                    </p>
+                    <p class="text-blue-800 text-xs mt-1">
+                      Mínimo requerido: <span id="quorum-minimo" class="font-bold">33</span>%
+                    </p>
+                  </div>
+                  <div class="text-right">
+                    <p id="quorum-status" class="text-2xl">⏳</p>
+                    <p id="quorum-status-text" class="text-xs font-bold text-blue-900">Validando...</p>
+                  </div>
+                </div>
+
+                <div class="mt-3 w-full bg-gray-300 rounded-full h-3">
+                  <div id="quorum-bar" class="bg-blue-600 h-3 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
             <!-- 📋 TEMAS / ORDEN DEL DÍA (solo Comité) -->
             <div id="section-temas" class="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
               <h4 class="font-bold text-lg mb-4">📋 Orden del Día / Temas</h4>
@@ -914,20 +991,17 @@
       const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
       const esComite = actaTipoActual === 'comite';
 
+      document.getElementById('section-asistentes-basica').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-temas').classList.toggle('hidden', !esComite);
-      document.getElementById('section-asistentes').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-votaciones').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-rut').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-periodo').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-motivo-extraordinaria').classList.toggle('hidden', !esExtraordinaria);
-      document.getElementById('quorum-summary').classList.toggle('hidden', !esAsamblea);
 
-      temasTemp = [];
-      asistentesTemp = [];
-      votacionesTemp = [];
-      renderTemas();
-      renderAsistentes();
-      renderVotaciones();
+      if (!esAsamblea) {
+        asistentesTemp = [];
+        renderAsistentes();
+      }
     }
 
     function agregarAsistente() {
@@ -960,11 +1034,13 @@
 
       tbody.innerHTML = asistentesTemp.map(a => `
         <tr>
-          <td class="px-4 py-2">${a.nombre}</td>
-          <td class="px-4 py-2">${a.rut}</td>
-          <td class="px-4 py-2"><span class="bg-purple-100 text-purple-900 text-xs font-bold px-2 py-1 rounded">${a.rol}</span></td>
+          <td class="px-4 py-2 font-medium">${a.nombre}</td>
+          <td class="px-4 py-2 text-sm">${a.rut}</td>
+          <td class="px-4 py-2">
+            <span class="px-2 py-1 bg-purple-100 text-purple-900 text-xs font-bold rounded">${a.rol}</span>
+          </td>
           <td class="px-4 py-2 text-center">
-            <input type="checkbox" ${a.presente ? 'checked' : ''} onchange="toggleAsistente(${a.id})" class="cursor-pointer">
+            <input type="checkbox" ${a.presente ? 'checked' : ''} onchange="toggleAsistente(${a.id})" class="cursor-pointer w-5 h-5">
           </td>
           <td class="px-4 py-2 text-center">
             <button type="button" onclick="eliminarAsistente(${a.id})" class="text-red-600 hover:underline text-xs font-bold">Eliminar</button>
@@ -1006,21 +1082,17 @@
 
       const barraEl = document.getElementById('quorum-bar');
       barraEl.style.width = porcentaje + '%';
-      barraEl.className = quorumValido ? 'bg-green-600 h-2 rounded-full transition-all' : 'bg-red-600 h-2 rounded-full transition-all';
+      barraEl.className = quorumValido ? 'bg-green-600 h-3 rounded-full transition-all' : 'bg-red-600 h-3 rounded-full transition-all';
 
-      const quorumEl = document.getElementById('quorum-summary');
+      const statusEl = document.querySelector('#quorum-summary > div > div:last-child');
       if (quorumValido) {
-        quorumEl.classList.remove('bg-red-50', 'border-red-200', 'bg-blue-50', 'border-blue-200');
-        quorumEl.classList.add('bg-green-50', 'border-green-200');
-        const statusEl = quorumEl.querySelector('p:first-child');
-        statusEl.textContent = '✅ Quórum cumplido';
-        statusEl.className = 'font-bold text-green-900';
+        statusEl.querySelector('p:first-child').textContent = '✅';
+        statusEl.querySelector('p:last-child').textContent = 'Quórum cumplido';
+        statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-green-900';
       } else {
-        quorumEl.classList.remove('bg-green-50', 'border-green-200', 'bg-blue-50', 'border-blue-200');
-        quorumEl.classList.add('bg-red-50', 'border-red-200');
-        const statusEl = quorumEl.querySelector('p:first-child');
-        statusEl.textContent = '❌ Quórum insuficiente (' + minimoRequerido + '% mínimo)';
-        statusEl.className = 'font-bold text-red-900';
+        statusEl.querySelector('p:first-child').textContent = '❌';
+        statusEl.querySelector('p:last-child').textContent = `Quórum insuficiente (${minimoRequerido}% mínimo)`;
+        statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-red-900';
       }
     }
 
