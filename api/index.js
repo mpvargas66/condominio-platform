@@ -462,19 +462,26 @@ app.get('/api/actas/:id/pdf', (req, res) => {
 
     doc.pipe(res);
 
-    if (acta.tipo.includes('asamblea')) {
-      generarPDFAsamblea(doc, acta, req.params.id);
-    } else {
-      generarPDFComite(doc, acta, req.params.id);
+    try {
+      if (acta.tipo.includes('asamblea')) {
+        generarPDFAsamblea(doc, acta, req.params.id, db);
+      } else {
+        generarPDFComite(doc, acta, req.params.id, db);
+      }
+    } catch (pdfError) {
+      console.error('Error generando PDF:', pdfError);
+      res.status(500).json({ error: 'Error al generar PDF: ' + pdfError.message });
+      return;
     }
 
     doc.end();
   } catch (error) {
+    console.error('Error en ruta PDF:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-function generarPDFAsamblea(doc, acta, actaId) {
+function generarPDFAsamblea(doc, acta, actaId, db) {
   doc.fontSize(14).font('Helvetica-Bold').text('ACTA DE ASAMBLEA DE COPROPIETARIOS', { align: 'center' });
 
   const tipo = acta.tipo === 'asamblea_ordinaria' ? 'ORDINARIA' : 'EXTRAORDINARIA';
@@ -559,7 +566,7 @@ function generarPDFAsamblea(doc, acta, actaId) {
   doc.fontSize(8).text('Se levanta acta siendo las ' + (acta.hora_cierre || '[Hora]') + ' horas.', { align: 'center' });
 }
 
-function generarPDFComite(doc, acta, actaId) {
+function generarPDFComite(doc, acta, actaId, db) {
   doc.fontSize(14).font('Helvetica-Bold').text('ACTA DE REUNIÓN DE COMITÉ', { align: 'center' });
   doc.moveDown(0.5);
 
