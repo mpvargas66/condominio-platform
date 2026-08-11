@@ -886,10 +886,25 @@
 
     async function loadAuditoria() {
       try {
+        if (currentUser.perfil !== 'admin') {
+          console.log('No eres admin, auditoria deshabilitada');
+          return;
+        }
+
+        console.log('🔄 Cargando auditoría...');
         const response = await fetch(`${API_BASE}/api/auditoria`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        if (!response.ok) {
+          console.warn('⚠️ Auditoría no disponible:', response.status);
+          document.getElementById('auditoria-tbody').innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Auditoría no disponible</td></tr>';
+          return;
+        }
+
         const logs = await response.json();
+        console.log('📋 Logs recibidos:', logs);
+
         document.getElementById('auditoria-tbody').innerHTML = logs.map(log => `
           <tr>
             <td class="px-6 py-4 font-medium text-gray-900">${log.nombre || 'Sistema'}</td>
@@ -898,7 +913,10 @@
             <td class="px-6 py-4 text-sm text-gray-600">${log.detalles || '-'}</td>
           </tr>
         `).join('');
-      } catch (error) { console.error(error); }
+      } catch (error) {
+        console.error('❌ Error en loadAuditoria:', error);
+        document.getElementById('auditoria-tbody').innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Error cargando auditoría</td></tr>';
+      }
     }
 
     function showError(elementId, message) {
