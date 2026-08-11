@@ -1543,23 +1543,37 @@
       }
 
       try {
+        console.log('📤 Enviando POST a /api/votaciones...');
+        console.log('Body:', { titulo, descripcion, tipo, opciones });
+
         const response = await fetch(`${API_BASE}/api/votaciones`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ titulo, descripcion, tipo, opciones })
         });
 
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response ok:', response.ok);
+
         const data = await response.json();
+        console.log('✅ Response data:', data);
+
         if (data.success) {
+          console.log('🎉 Votación creada exitosamente, ID:', data.id);
           hideNewVotacionForm();
-          loadVotaciones();
+
+          console.log('🔄 Llamando loadVotaciones()...');
+          await loadVotaciones();
+
+          console.log('✅ Tabla actualizada');
           alert('✅ Votación creada');
         } else {
+          console.error('❌ Error en respuesta:', data.error);
           alert('Error: ' + data.error);
         }
       } catch (error) {
-        console.error(error);
-        alert('Error al crear votación');
+        console.error('❌ Error al crear votación:', error);
+        alert('Error al crear votación: ' + error.message);
       }
     }
 
@@ -1581,12 +1595,33 @@
 
     async function loadVotaciones() {
       try {
+        console.log('🔄 loadVotaciones() iniciando...');
+        console.log('API_BASE:', API_BASE);
+        console.log('Token:', token?.substring(0, 20) + '...');
+
         const response = await fetch(`${API_BASE}/api/votaciones`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response ok:', response.ok);
+
+        if (!response.ok) {
+          console.error('❌ Error en respuesta:', response.status, response.statusText);
+          return;
+        }
+
         const votaciones = await response.json();
+        console.log('📋 Votaciones recibidas:', votaciones);
+        console.log('📊 Total votaciones:', votaciones.length);
+
+        if (!Array.isArray(votaciones)) {
+          console.error('❌ votaciones no es un array:', typeof votaciones);
+          return;
+        }
 
         document.getElementById('votaciones-tbody').innerHTML = votaciones.map(v => {
+          console.log('Procesando votación:', v.id, v.titulo);
           const miVotoTexto = v.miVoto ? '✅ Votado' : '⏳ Sin votar';
           const estadoBadge = v.estado === 'abierta'
             ? '<span class="px-3 py-1 bg-green-100 text-green-900 text-xs font-bold rounded">Abierta</span>'
@@ -1611,7 +1646,12 @@
             </tr>
           `;
         }).join('');
-      } catch (error) { console.error(error); }
+
+        console.log('✅ Tabla de votaciones actualizada');
+      } catch (error) {
+        console.error('❌ Error en loadVotaciones:', error);
+        console.error('Stack:', error.stack);
+      }
     }
 
     async function abrirVotacionModal(votacionId) {
