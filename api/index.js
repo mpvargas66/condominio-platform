@@ -78,6 +78,24 @@ function initDb() {
       FOREIGN KEY(acta_id) REFERENCES actas(id)
     );
 
+    CREATE TABLE IF NOT EXISTS temas_actas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      acta_id INTEGER NOT NULL,
+      numero INTEGER,
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      conclusiones TEXT,
+      observaciones TEXT,
+      pendientes TEXT,
+      acuerdos TEXT,
+      responsable TEXT,
+      fecha_limite DATE,
+      estado TEXT DEFAULT 'pendiente',
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(acta_id) REFERENCES actas(id)
+    );
+
     CREATE TABLE IF NOT EXISTS firmas_actas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       acta_id INTEGER NOT NULL,
@@ -350,6 +368,67 @@ app.get('/api/actas/:id/votaciones', verificarToken, (req, res) => {
 app.delete('/api/votaciones/:id', verificarToken, (req, res) => {
   try {
     db.prepare(`DELETE FROM votaciones_actas WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== TEMAS ==========
+app.post('/api/actas/:id/temas', verificarToken, (req, res) => {
+  try {
+    const { numero, titulo } = req.body;
+    const stmt = db.prepare(`
+      INSERT INTO temas_actas (acta_id, numero, titulo, estado)
+      VALUES (?, ?, ?, 'pendiente')
+    `);
+    const result = stmt.run(req.params.id, numero, titulo);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/actas/:id/temas', verificarToken, (req, res) => {
+  try {
+    const temas = db.prepare(`
+      SELECT * FROM temas_actas WHERE acta_id = ? ORDER BY numero ASC
+    `).all(req.params.id);
+    res.json(temas);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/temas/:id', verificarToken, (req, res) => {
+  try {
+    const tema = db.prepare(`SELECT * FROM temas_actas WHERE id = ?`).get(req.params.id);
+    if (!tema) return res.status(404).json({ error: 'Tema no encontrado' });
+    res.json(tema);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/temas/:id', verificarToken, (req, res) => {
+  try {
+    const { descripcion, conclusiones, observaciones, pendientes, acuerdos, responsable, fecha_limite, estado } = req.body;
+    const stmt = db.prepare(`
+      UPDATE temas_actas
+      SET descripcion = ?, conclusiones = ?, observaciones = ?, pendientes = ?, acuerdos = ?, responsable = ?, fecha_limite = ?, estado = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(descripcion, conclusiones, observaciones, pendientes, acuerdos, responsable, fecha_limite, estado, req.params.id);
+    registrarAuditoria(req.usuarioId, 'actualizar_tema', `Tema actualizado`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/temas/:id', verificarToken, (req, res) => {
+  try {
+    db.prepare(`DELETE FROM temas_actas WHERE id = ?`).run(req.params.id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
