@@ -437,19 +437,19 @@ app.delete('/api/temas/:id', verificarToken, (req, res) => {
 
 // ========== DESCARGAR PDF ==========
 app.get('/api/actas/:id/pdf', (req, res) => {
+  // Verificar token manualmente
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
   try {
-    // Verificar token manualmente
-    const token = req.headers['authorization']?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'No autorizado' });
-    }
+    jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido' });
+  }
 
-    try {
-      jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(403).json({ error: 'Token inválido' });
-    }
-
+  try {
     const acta = db.prepare(`SELECT * FROM actas WHERE id = ?`).get(req.params.id);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
 
@@ -460,24 +460,33 @@ app.get('/api/actas/:id/pdf', (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
+    // Manejar errores del documento
+    doc.on('error', (err) => {
+      console.error('Error en documento PDF:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Error generando PDF' });
+      }
+    });
+
+    res.on('error', (err) => {
+      console.error('Error en response:', err);
+      doc.end();
+    });
+
     doc.pipe(res);
 
-    try {
-      if (acta.tipo.includes('asamblea')) {
-        generarPDFAsamblea(doc, acta, req.params.id, db);
-      } else {
-        generarPDFComite(doc, acta, req.params.id, db);
-      }
-    } catch (pdfError) {
-      console.error('Error generando PDF:', pdfError);
-      res.status(500).json({ error: 'Error al generar PDF: ' + pdfError.message });
-      return;
+    if (acta.tipo.includes('asamblea')) {
+      generarPDFAsamblea(doc, acta, req.params.id, db);
+    } else {
+      generarPDFComite(doc, acta, req.params.id, db);
     }
 
     doc.end();
   } catch (error) {
     console.error('Error en ruta PDF:', error);
-    res.status(500).json({ error: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
