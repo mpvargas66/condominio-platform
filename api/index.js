@@ -435,6 +435,191 @@ app.delete('/api/temas/:id', verificarToken, (req, res) => {
   }
 });
 
+// ========== DESCARGAR PDF ==========
+app.get('/api/actas/:id/pdf', verificarToken, (req, res) => {
+  try {
+    const acta = db.prepare(`SELECT * FROM actas WHERE id = ?`).get(req.params.id);
+    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const filename = `acta-${acta.id}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    if (acta.tipo.includes('asamblea')) {
+      generarPDFAsamblea(doc, acta, req.params.id);
+    } else {
+      generarPDFComite(doc, acta, req.params.id);
+    }
+
+    doc.end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+function generarPDFAsamblea(doc, acta, actaId) {
+  doc.fontSize(14).font('Helvetica-Bold').text('ACTA DE ASAMBLEA DE COPROPIETARIOS', { align: 'center' });
+
+  const tipo = acta.tipo === 'asamblea_ordinaria' ? 'ORDINARIA' : 'EXTRAORDINARIA';
+  doc.fontSize(12).font('Helvetica-Bold').text(`(${tipo})`, { align: 'center' });
+  doc.moveDown(0.5);
+
+  doc.fontSize(10).font('Helvetica');
+  doc.text(`Fecha: ${new Date(acta.fecha_reunion).toLocaleDateString('es-CL')}`);
+  doc.text(`Hora: ${acta.hora_inicio || '[Sin especificar]'} - ${acta.hora_cierre || '[Sin especificar]'}`);
+  doc.text(`Lugar: ${acta.lugar || '[Sin especificar]'}`);
+  doc.text(`Título: ${acta.titulo}`);
+  doc.moveDown(0.5);
+
+  const asistentes = db.prepare(`SELECT * FROM asistentes_actas WHERE acta_id = ? ORDER BY presente DESC, nombre ASC`).all(actaId);
+  const presentes = asistentes.filter(a => a.presente).length;
+  const total = asistentes.length;
+  const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+
+  doc.fontSize(11).font('Helvetica-Bold').text('I. PARTICIPANTES', 50);
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Total: ${total} | Presentes: ${presentes} | Porcentaje: ${porcentaje}%`);
+  doc.moveDown(0.3);
+
+  doc.fontSize(8).font('Helvetica-Bold');
+  doc.text('Nombre', 50, doc.y);
+  doc.text('RUT', 250, doc.y);
+  doc.text('Rol', 350, doc.y);
+  doc.text('Presente', 450, doc.y);
+  doc.moveDown(0.2);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+
+  doc.fontSize(8).font('Helvetica');
+  asistentes.forEach(a => {
+    doc.text(a.nombre.substring(0, 30), 50, doc.y);
+    doc.text(a.rut, 250, doc.y - doc.currentLineHeight());
+    doc.text(a.rol, 350, doc.y - doc.currentLineHeight());
+    doc.text(a.presente ? 'Sí' : 'No', 450, doc.y - doc.currentLineHeight());
+    doc.moveDown(0.25);
+  });
+
+  doc.moveDown(0.5);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font('Helvetica-Bold').text('II. QUÓRUM', 50);
+  doc.fontSize(9).font('Helvetica');
+  const minimoRequerido = acta.tipo === 'asamblea_extraordinaria' ? 50 : 33;
+  const quorumValido = acta.tipo === 'asamblea_extraordinaria'
+    ? presentes >= Math.ceil(total * 0.5) + 1
+    : porcentaje >= 33;
+  doc.text(`Mínimo requerido: ${minimoRequerido}% | Quórum: ${quorumValido ? '✅ VÁLIDO' : '❌ INVÁLIDO'}`);
+  doc.moveDown(0.5);
+
+  const votaciones = db.prepare(`SELECT * FROM votaciones_actas WHERE acta_id = ? ORDER BY numero ASC`).all(actaId);
+  if (votaciones.length > 0) {
+    doc.fontSize(10).font('Helvetica-Bold').text('III. VOTACIONES', 50);
+    doc.fontSize(9).font('Helvetica');
+
+    votaciones.forEach(v => {
+      doc.text(`${v.numero}. ${v.titulo}`, 50);
+      doc.text(`  A favor: ${v.votos_favor} | Contra: ${v.votos_contra} | Abstenciones: ${v.abstenciones}`, 50);
+      doc.text(`  Resultado: ${v.resultado}`, 50);
+      doc.moveDown(0.2);
+    });
+    doc.moveDown(0.5);
+  }
+
+  doc.fontSize(10).font('Helvetica-Bold').text('IV. FIRMAS', 50);
+  doc.moveDown(1);
+
+  const firmaY = doc.y;
+  doc.fontSize(8).font('Helvetica').text('_____________________', 50, firmaY);
+  doc.text('Presidente', 50, firmaY + 15);
+
+  doc.text('_____________________', 200, firmaY);
+  doc.text('Secretario', 200, firmaY + 15);
+
+  doc.text('_____________________', 350, firmaY);
+  doc.text('Tesorero', 350, firmaY + 15);
+
+  doc.moveDown(2);
+  doc.fontSize(8).text('Se levanta acta siendo las ' + (acta.hora_cierre || '[Hora]') + ' horas.', { align: 'center' });
+}
+
+function generarPDFComite(doc, acta, actaId) {
+  doc.fontSize(14).font('Helvetica-Bold').text('ACTA DE REUNIÓN DE COMITÉ', { align: 'center' });
+  doc.moveDown(0.5);
+
+  doc.fontSize(10).font('Helvetica');
+  doc.text(`Fecha: ${new Date(acta.fecha_reunion).toLocaleDateString('es-CL')}`);
+  doc.text(`Hora: ${acta.hora_inicio || '[Sin especificar]'} - ${acta.hora_cierre || '[Sin especificar]'}`);
+  doc.text(`Lugar: ${acta.lugar || '[Sin especificar]'}`);
+  doc.text(`Título: ${acta.titulo}`);
+  doc.moveDown(0.5);
+
+  const asistentes = db.prepare(`SELECT * FROM asistentes_actas WHERE acta_id = ? ORDER BY presente DESC, nombre ASC`).all(actaId);
+
+  doc.fontSize(11).font('Helvetica-Bold').text('I. ASISTENTES', 50);
+  doc.fontSize(9).font('Helvetica');
+
+  doc.fontSize(8).font('Helvetica-Bold');
+  doc.text('Nombre', 50, doc.y);
+  doc.text('RUT', 250, doc.y);
+  doc.text('Rol', 350, doc.y);
+  doc.text('Presente', 450, doc.y);
+  doc.moveDown(0.2);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+
+  doc.fontSize(8).font('Helvetica');
+  asistentes.forEach(a => {
+    doc.text(a.nombre.substring(0, 30), 50, doc.y);
+    doc.text(a.rut, 250, doc.y - doc.currentLineHeight());
+    doc.text(a.rol, 350, doc.y - doc.currentLineHeight());
+    doc.text(a.presente ? 'Sí' : 'No', 450, doc.y - doc.currentLineHeight());
+    doc.moveDown(0.25);
+  });
+
+  doc.moveDown(0.5);
+  doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+  doc.moveDown(0.5);
+
+  doc.fontSize(11).font('Helvetica-Bold').text('II. ORDEN DEL DÍA', 50);
+  doc.fontSize(9).font('Helvetica');
+
+  const temas = db.prepare(`SELECT * FROM temas_actas WHERE acta_id = ? ORDER BY numero ASC`).all(actaId);
+
+  if (temas.length === 0) {
+    doc.text('[Sin temas registrados]');
+  } else {
+    temas.forEach(t => {
+      doc.fontSize(9).font('Helvetica-Bold').text(`Tema ${t.numero}: ${t.titulo}`, 50);
+      doc.fontSize(8).font('Helvetica');
+      if (t.descripcion) doc.text(`Descripción: ${t.descripcion.substring(0, 80)}...`, 50);
+      if (t.conclusiones) doc.text(`Conclusiones: ${t.conclusiones.substring(0, 80)}...`, 50);
+      if (t.acuerdos) doc.text(`Acuerdos: ${t.acuerdos.substring(0, 80)}...`, 50);
+      if (t.responsable) doc.text(`Responsable: ${t.responsable}`, 50);
+      if (t.fecha_limite) doc.text(`Fecha límite: ${t.fecha_limite}`, 50);
+      doc.moveDown(0.3);
+    });
+  }
+
+  doc.moveDown(0.5);
+
+  doc.fontSize(10).font('Helvetica-Bold').text('III. FIRMAS', 50);
+  doc.moveDown(1);
+
+  const firmaY = doc.y;
+  doc.fontSize(8).font('Helvetica').text('_____________________', 50, firmaY);
+  doc.text('Presidente', 50, firmaY + 15);
+
+  doc.text('_____________________', 200, firmaY);
+  doc.text('Secretario', 200, firmaY + 15);
+
+  doc.moveDown(2);
+  doc.fontSize(8).text('Se levanta acta siendo las ' + (acta.hora_cierre || '[Hora]') + ' horas.', { align: 'center' });
+}
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Comunité' });
 });
