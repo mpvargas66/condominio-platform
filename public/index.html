@@ -1480,20 +1480,47 @@
     }
 
     async function crearVotacion() {
-      const titulo = document.getElementById('votacion-titulo').value.trim();
-      const descripcion = document.getElementById('votacion-descripcion').value.trim();
-      const tipo = document.getElementById('votacion-tipo').value;
+      const formContainer = document.getElementById('new-votacion-form');
 
-      const opcionInputs = document.querySelectorAll('.opcion-input');
-      const opciones = Array.from(opcionInputs).map(input => input.value.trim()).filter(v => v);
+      const tituloInput = formContainer.querySelector('input#votacion-titulo');
+      const descripcionInput = formContainer.querySelector('textarea#votacion-descripcion');
+      const tipoInput = formContainer.querySelector('select#votacion-tipo');
 
-      if (!titulo) {
-        alert('Título requerido');
+      console.log('Buscando elementos en new-votacion-form');
+      console.log('tituloInput:', tituloInput);
+      console.log('descripcionInput:', descripcionInput);
+      console.log('tipoInput:', tipoInput);
+
+      if (!tituloInput) {
+        console.error('No se encontró input votacion-titulo');
+        alert('Error: Elemento título no encontrado');
+        return;
+      }
+
+      const titulo = tituloInput.value.trim();
+      const descripcion = descripcionInput ? descripcionInput.value.trim() : '';
+      const tipo = tipoInput ? tipoInput.value : 'abierta';
+
+      console.log('Título:', titulo);
+      console.log('Descripción:', descripcion);
+      console.log('Tipo:', tipo);
+
+      const opcionInputs = formContainer.querySelectorAll('.opcion-input');
+      console.log('Opciones encontradas:', opcionInputs.length);
+
+      const opciones = Array.from(opcionInputs)
+        .map(input => input.value.trim())
+        .filter(v => v.length > 0);
+
+      console.log('Opciones filtradas:', opciones);
+
+      if (!titulo || titulo.length === 0) {
+        alert('Título requerido - valor actual: "' + titulo + '"');
         return;
       }
 
       if (opciones.length < 2) {
-        alert('Mínimo 2 opciones');
+        alert('Mínimo 2 opciones requeridas. Tienes: ' + opciones.length);
         return;
       }
 
