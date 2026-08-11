@@ -297,9 +297,10 @@
               </div>
             </div>
 
-            <!-- 👥 ASISTENTES + ROL (Solo Asamblea) -->
+            <!-- 👥 ASISTENTES + ROL (Comité Y Asamblea) -->
             <div id="section-asistentes-basica" class="hidden mb-6 bg-blue-50 p-6 rounded-lg border border-blue-200">
               <h4 class="font-bold text-lg mb-4">👥 Asistentes y Roles</h4>
+              <p class="text-sm text-blue-700 mb-4" id="asistentes-subtitulo">Registra los asistentes a la reunión</p>
 
               <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
                 <h5 class="font-bold mb-4">Agregar Asistente</h5>
@@ -991,14 +992,21 @@
       const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
       const esComite = actaTipoActual === 'comite';
 
-      document.getElementById('section-asistentes-basica').classList.toggle('hidden', !esAsamblea);
+      // Mostrar asistentes EN AMBOS CASOS (comité y asamblea)
+      document.getElementById('section-asistentes-basica').classList.toggle('hidden', !esComite && !esAsamblea);
+
+      // Mostrar quórum solo en ASAMBLEAS
+      document.getElementById('quorum-summary').classList.toggle('hidden', !esAsamblea);
+
+      // Mostrar/ocultar otras secciones
       document.getElementById('section-temas').classList.toggle('hidden', !esComite);
       document.getElementById('section-votaciones').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-rut').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-periodo').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-motivo-extraordinaria').classList.toggle('hidden', !esExtraordinaria);
 
-      if (!esAsamblea) {
+      // Limpiar asistentes si cambia de tipo
+      if (!esComite && !esAsamblea) {
         asistentesTemp = [];
         renderAsistentes();
       }
@@ -1064,10 +1072,18 @@
     function calcularQuorum() {
       const presentes = asistentesTemp.filter(a => a.presente).length;
       const total = asistentesTemp.length;
+      const esAsamblea = actaTipoActual.includes('asamblea');
+
+      // Si es comité, no calcular quórum
+      if (!esAsamblea) {
+        return;
+      }
+
       const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
       const minimoRequerido = esExtraordinaria ? 50 : 33;
       const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
 
+      // Calcular si cumple con quórum
       let quorumValido = false;
       if (esExtraordinaria) {
         quorumValido = presentes >= Math.ceil(total * 0.5) + 1;
@@ -1075,24 +1091,29 @@
         quorumValido = porcentaje >= minimoRequerido;
       }
 
+      // Actualizar UI
       document.getElementById('quorum-presentes').textContent = presentes;
       document.getElementById('quorum-total').textContent = total;
       document.getElementById('quorum-porcentaje').textContent = porcentaje;
       document.getElementById('quorum-minimo').textContent = minimoRequerido;
 
+      // Barra de progreso
       const barraEl = document.getElementById('quorum-bar');
       barraEl.style.width = porcentaje + '%';
       barraEl.className = quorumValido ? 'bg-green-600 h-3 rounded-full transition-all' : 'bg-red-600 h-3 rounded-full transition-all';
 
+      // Status
       const statusEl = document.querySelector('#quorum-summary > div > div:last-child');
-      if (quorumValido) {
-        statusEl.querySelector('p:first-child').textContent = '✅';
-        statusEl.querySelector('p:last-child').textContent = 'Quórum cumplido';
-        statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-green-900';
-      } else {
-        statusEl.querySelector('p:first-child').textContent = '❌';
-        statusEl.querySelector('p:last-child').textContent = `Quórum insuficiente (${minimoRequerido}% mínimo)`;
-        statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-red-900';
+      if (statusEl) {
+        if (quorumValido) {
+          statusEl.querySelector('p:first-child').textContent = '✅';
+          statusEl.querySelector('p:last-child').textContent = 'Quórum cumplido';
+          statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-green-900';
+        } else {
+          statusEl.querySelector('p:first-child').textContent = '❌';
+          statusEl.querySelector('p:last-child').textContent = `Quórum insuficiente (${minimoRequerido}% mínimo)`;
+          statusEl.querySelector('p:last-child').className = 'text-xs font-bold text-red-900';
+        }
       }
     }
 
