@@ -349,8 +349,16 @@
 
               <div id="quorum-summary" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
                 <p class="font-bold text-blue-900">📊 Quórum</p>
-                <p class="text-blue-800">Presentes: <span id="quorum-presentes">0</span> / Total: <span id="quorum-total">0</span> (<span id="quorum-porcentaje">0</span>%)</p>
-                <p class="text-blue-800 text-xs mt-2">Mínimo requerido: 33%</p>
+                <p class="text-blue-800">
+                  Presentes: <span id="quorum-presentes" class="font-bold">0</span> / Total: <span id="quorum-total" class="font-bold">0</span>
+                  (<span id="quorum-porcentaje" class="font-bold">0</span>%)
+                </p>
+                <p class="text-blue-800 text-xs mt-2">
+                  Mínimo requerido: <span id="quorum-minimo" class="font-bold">33</span>%
+                </p>
+                <div class="mt-3 w-full bg-gray-300 rounded-full h-2">
+                  <div id="quorum-bar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                </div>
               </div>
             </div>
 
@@ -664,25 +672,102 @@
 
     async function handleNewActa(e) {
       e.preventDefault();
-      const titulo = document.getElementById('acta-titulo').value;
+
+      const titulo = document.getElementById('acta-titulo').value.trim();
       const tipo = document.getElementById('acta-tipo').value;
-      const contenido = document.getElementById('acta-contenido').value;
       const fecha_reunion = document.getElementById('acta-fecha').value;
+      const hora_inicio = document.getElementById('acta-hora-inicio').value;
+      const hora_cierre = document.getElementById('acta-hora-cierre').value;
+      const lugar = document.getElementById('acta-lugar').value.trim();
+
+      if (!titulo || !fecha_reunion) {
+        alert('Completa título y fecha');
+        return;
+      }
+
+      // Validar quórum para asambleas
+      if (tipo.includes('asamblea')) {
+        if (asistentesTemp.length === 0) {
+          alert('Agrega al menos 1 asistente');
+          return;
+        }
+
+        const presentes = asistentesTemp.filter(a => a.presente).length;
+        const total = asistentesTemp.length;
+        const esExtraordinaria = tipo === 'asamblea_extraordinaria';
+        const quorumValido = esExtraordinaria
+          ? presentes >= Math.ceil(total * 0.5) + 1
+          : Math.round((presentes / total) * 100) >= 33;
+
+        if (!quorumValido) {
+          alert('No hay quórum suficiente para realizar la asamblea');
+          return;
+        }
+      }
+
       try {
-        const response = await fetch(`${API_BASE}/api/actas`, {
+        const responseActa = await fetch(`${API_BASE}/api/actas`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ titulo, tipo, contenido, fecha_reunion })
+          body: JSON.stringify({
+            titulo,
+            tipo,
+            contenido: '[Contenido generado]',
+            fecha_reunion
+          })
         });
-        const data = await response.json();
-        if (data.success) {
-          hideNewActaForm();
-          loadActas();
-          document.getElementById('acta-titulo').value = '';
-          document.getElementById('acta-contenido').value = '';
-          document.getElementById('acta-fecha').value = '';
+
+        const dataActa = await responseActa.json();
+        if (!dataActa.success) throw new Error('No se pudo crear acta');
+
+        const actaId = dataActa.id;
+
+        // Guardar asistentes (solo Asamblea)
+        if (tipo.includes('asamblea')) {
+          for (const asistente of asistentesTemp) {
+            await fetch(`${API_BASE}/api/actas/${actaId}/asistentes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify(asistente)
+            });
+          }
+
+          // Guardar votaciones
+          for (const votacion of votacionesTemp) {
+            await fetch(`${API_BASE}/api/actas/${actaId}/votaciones`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify(votacion)
+            });
+          }
         }
-      } catch (error) { console.error(error); }
+
+        hideNewActaForm();
+        limpiarFormularioActa();
+        loadActas();
+        alert('✅ Acta guardada correctamente');
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar acta: ' + error.message);
+      }
+    }
+
+    function limpiarFormularioActa() {
+      document.getElementById('acta-titulo').value = '';
+      document.getElementById('acta-tipo').value = 'comite';
+      document.getElementById('acta-fecha').value = '';
+      document.getElementById('acta-hora-inicio').value = '';
+      document.getElementById('acta-hora-cierre').value = '';
+      document.getElementById('acta-lugar').value = '';
+      document.getElementById('acta-rut-comunidad').value = '';
+      document.getElementById('acta-periodo-inicio').value = '';
+      document.getElementById('acta-periodo-fin').value = '';
+      document.getElementById('acta-motivo-extraordinaria').value = '';
+      asistentesTemp = [];
+      votacionesTemp = [];
+      renderAsistentes();
+      renderVotaciones();
+      onActaTipoChange();
     }
 
     async function loadTemplateActa() {
@@ -783,11 +868,40 @@
     function calcularQuorum() {
       const presentes = asistentesTemp.filter(a => a.presente).length;
       const total = asistentesTemp.length;
+      const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
+      const minimoRequerido = esExtraordinaria ? 50 : 33;
       const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+
+      let quorumValido = false;
+      if (esExtraordinaria) {
+        quorumValido = presentes >= Math.ceil(total * 0.5) + 1;
+      } else {
+        quorumValido = porcentaje >= minimoRequerido;
+      }
 
       document.getElementById('quorum-presentes').textContent = presentes;
       document.getElementById('quorum-total').textContent = total;
       document.getElementById('quorum-porcentaje').textContent = porcentaje;
+      document.getElementById('quorum-minimo').textContent = minimoRequerido;
+
+      const barraEl = document.getElementById('quorum-bar');
+      barraEl.style.width = porcentaje + '%';
+      barraEl.className = quorumValido ? 'bg-green-600 h-2 rounded-full transition-all' : 'bg-red-600 h-2 rounded-full transition-all';
+
+      const quorumEl = document.getElementById('quorum-summary');
+      if (quorumValido) {
+        quorumEl.classList.remove('bg-red-50', 'border-red-200', 'bg-blue-50', 'border-blue-200');
+        quorumEl.classList.add('bg-green-50', 'border-green-200');
+        const statusEl = quorumEl.querySelector('p:first-child');
+        statusEl.textContent = '✅ Quórum cumplido';
+        statusEl.className = 'font-bold text-green-900';
+      } else {
+        quorumEl.classList.remove('bg-green-50', 'border-green-200', 'bg-blue-50', 'border-blue-200');
+        quorumEl.classList.add('bg-red-50', 'border-red-200');
+        const statusEl = quorumEl.querySelector('p:first-child');
+        statusEl.textContent = '❌ Quórum insuficiente (' + minimoRequerido + '% mínimo)';
+        statusEl.className = 'font-bold text-red-900';
+      }
     }
 
     function agregarVotacion() {
