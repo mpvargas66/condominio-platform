@@ -436,8 +436,20 @@ app.delete('/api/temas/:id', verificarToken, (req, res) => {
 });
 
 // ========== DESCARGAR PDF ==========
-app.get('/api/actas/:id/pdf', verificarToken, (req, res) => {
+app.get('/api/actas/:id/pdf', (req, res) => {
   try {
+    // Verificar token manualmente
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+
     const acta = db.prepare(`SELECT * FROM actas WHERE id = ?`).get(req.params.id);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
 

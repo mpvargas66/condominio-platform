@@ -845,14 +845,35 @@
       } catch (error) { console.error(error); }
     }
 
-    function descargarPDF(actaId) {
-      const link = document.createElement('a');
-      link.href = `${API_BASE}/api/actas/${actaId}/pdf`;
-      link.setAttribute('Authorization', `Bearer ${token}`);
-      link.download = `acta-${actaId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    async function descargarPDF(actaId) {
+      try {
+        const response = await fetch(`${API_BASE}/api/actas/${actaId}/pdf`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al descargar PDF: ' + response.statusText);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `acta-${actaId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+
+      } catch (error) {
+        console.error(error);
+        alert('❌ Error al descargar PDF: ' + error.message);
+      }
     }
 
     function editarActa(id) {
