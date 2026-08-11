@@ -235,32 +235,185 @@
         </div>
 
         <div id="new-acta-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
-          <h3 class="text-lg font-bold mb-4">Crear Nueva Acta</h3>
+          <h3 class="text-lg font-bold mb-6">📝 Crear Nueva Acta</h3>
           <form onsubmit="handleNewActa(event)">
-            <div class="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Título</label>
-                <input type="text" id="acta-titulo" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                <select id="acta-tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="loadTemplateActa()">
+            <!-- 1️⃣ INFORMACIÓN BÁSICA -->
+            <div class="mb-6">
+              <h4 class="font-bold text-lg mb-4">📋 Información Básica</h4>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Acta</label>
+                <select id="acta-tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="onActaTipoChange()">
                   <option value="comite">Reunión de Comité</option>
                   <option value="asamblea_ordinaria">Asamblea Ordinaria</option>
                   <option value="asamblea_extraordinaria">Asamblea Extraordinaria</option>
                 </select>
               </div>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Título del Acta</label>
+                <input type="text" id="acta-titulo" required class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Reunión Comité 30 de julio 2026">
+              </div>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Reunión</label>
+                  <input type="date" id="acta-fecha" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Hora Inicio</label>
+                  <input type="time" id="acta-hora-inicio" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Hora Cierre</label>
+                  <input type="time" id="acta-hora-cierre" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar de Reunión</label>
+                <input type="text" id="acta-lugar" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Sala de juntas, piso 20">
+              </div>
+
+              <div id="section-rut" class="hidden mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">RUT Comunidad</label>
+                <input type="text" id="acta-rut-comunidad" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: 53.333.061-4">
+              </div>
+
+              <div id="section-periodo" class="hidden grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Período Inicio</label>
+                  <input type="date" id="acta-periodo-inicio" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Período Fin</label>
+                  <input type="date" id="acta-periodo-fin" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+              </div>
+
+              <div id="section-motivo-extraordinaria" class="hidden mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Motivo de Convocatoria</label>
+                <textarea id="acta-motivo-extraordinaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-20"></textarea>
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Reunión</label>
-              <input type="date" id="acta-fecha" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+
+            <!-- 2️⃣ ASISTENTES (solo Asamblea) -->
+            <div id="section-asistentes" class="hidden mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <h4 class="font-bold text-lg mb-4">👥 Asistentes</h4>
+
+              <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
+                <h5 class="font-bold mb-4">Agregar Asistente</h5>
+                <div class="grid md:grid-cols-4 gap-3 mb-4">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
+                    <input type="text" id="asistente-nombre" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="Nombre completo">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">RUT</label>
+                    <input type="text" id="asistente-rut" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="12.345.678-9">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Rol</label>
+                    <select id="asistente-rol" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                      <option value="">Seleccionar rol</option>
+                      <option value="presidente">Presidente</option>
+                      <option value="secretario">Secretario</option>
+                      <option value="tesorero">Tesorero</option>
+                      <option value="director">Director</option>
+                      <option value="copropietario">Copropietario</option>
+                      <option value="administrador">Administrador</option>
+                    </select>
+                  </div>
+                  <div class="flex items-end">
+                    <button type="button" onclick="agregarAsistente()" class="w-full px-4 py-2 bg-purple-600 text-white font-bold rounded hover:bg-purple-700 text-sm">Agregar</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-100 border-b">
+                    <tr>
+                      <th class="px-4 py-2 text-left font-bold">Nombre</th>
+                      <th class="px-4 py-2 text-left font-bold">RUT</th>
+                      <th class="px-4 py-2 text-left font-bold">Rol</th>
+                      <th class="px-4 py-2 text-center font-bold">Presente</th>
+                      <th class="px-4 py-2 text-center font-bold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="asistentes-tbody" class="divide-y">
+                    <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500 text-sm">Sin asistentes agregados</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div id="quorum-summary" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                <p class="font-bold text-blue-900">📊 Quórum</p>
+                <p class="text-blue-800">Presentes: <span id="quorum-presentes">0</span> / Total: <span id="quorum-total">0</span> (<span id="quorum-porcentaje">0</span>%)</p>
+                <p class="text-blue-800 text-xs mt-2">Mínimo requerido: 33%</p>
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Contenido</label>
-              <textarea id="acta-contenido" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-64 font-mono text-sm"></textarea>
+
+            <!-- 3️⃣ VOTACIONES (solo Asamblea) -->
+            <div id="section-votaciones" class="hidden mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <h4 class="font-bold text-lg mb-4">🗳️ Votaciones</h4>
+
+              <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
+                <h5 class="font-bold mb-4">Nueva Votación</h5>
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Número</label>
+                    <input type="number" id="votacion-numero" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" placeholder="1" min="1">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Título del Acuerdo</label>
+                    <input type="text" id="votacion-titulo" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Ej: Aprobación de presupuesto">
+                  </div>
+                </div>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                  <textarea id="votacion-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm h-16"></textarea>
+                </div>
+                <div class="grid md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">✅ A Favor</label>
+                    <input type="number" id="votacion-favor" class="w-full px-4 py-2 border border-green-300 rounded-lg text-sm" placeholder="0" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">❌ En Contra</label>
+                    <input type="number" id="votacion-contra" class="w-full px-4 py-2 border border-red-300 rounded-lg text-sm" placeholder="0" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🤷 Abstenciones</label>
+                    <input type="number" id="votacion-abstenciones" class="w-full px-4 py-2 border border-yellow-300 rounded-lg text-sm" placeholder="0" min="0">
+                  </div>
+                </div>
+                <button type="button" onclick="agregarVotacion()" class="w-full px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Agregar Votación</button>
+              </div>
+
+              <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-100 border-b">
+                    <tr>
+                      <th class="px-4 py-2 text-left font-bold">#</th>
+                      <th class="px-4 py-2 text-left font-bold">Título</th>
+                      <th class="px-4 py-2 text-center font-bold">✅ A Favor</th>
+                      <th class="px-4 py-2 text-center font-bold">❌ Contra</th>
+                      <th class="px-4 py-2 text-center font-bold">🤷 Abstención</th>
+                      <th class="px-4 py-2 text-center font-bold">Resultado</th>
+                      <th class="px-4 py-2 text-center font-bold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="votaciones-tbody" class="divide-y">
+                    <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500 text-sm">Sin votaciones agregadas</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            <!-- BOTONES -->
             <div class="flex space-x-4">
-              <button type="submit" class="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Guardar</button>
+              <button type="submit" class="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Guardar Acta</button>
               <button type="button" onclick="hideNewActaForm()" class="px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
             </div>
           </form>
@@ -547,6 +700,159 @@
 
     function viewActa(id) {
       alert('Funcionalidad de vista detallada próximamente');
+    }
+
+    // ========== PASO 3: FRONTEND UI - ASISTENTES Y VOTACIONES ==========
+    let actaTipoActual = 'comite';
+    let asistentesTemp = [];
+    let votacionesTemp = [];
+
+    function onActaTipoChange() {
+      actaTipoActual = document.getElementById('acta-tipo').value;
+      const esAsamblea = actaTipoActual.includes('asamblea');
+      const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
+
+      document.getElementById('section-asistentes').classList.toggle('hidden', !esAsamblea);
+      document.getElementById('section-votaciones').classList.toggle('hidden', !esAsamblea);
+      document.getElementById('section-rut').classList.toggle('hidden', !esAsamblea);
+      document.getElementById('section-periodo').classList.toggle('hidden', !esAsamblea);
+      document.getElementById('section-motivo-extraordinaria').classList.toggle('hidden', !esExtraordinaria);
+      document.getElementById('quorum-summary').classList.toggle('hidden', !esAsamblea);
+
+      asistentesTemp = [];
+      votacionesTemp = [];
+      renderAsistentes();
+      renderVotaciones();
+    }
+
+    function agregarAsistente() {
+      const nombre = document.getElementById('asistente-nombre').value.trim();
+      const rut = document.getElementById('asistente-rut').value.trim();
+      const rol = document.getElementById('asistente-rol').value;
+
+      if (!nombre || !rut || !rol) {
+        alert('Completa todos los campos');
+        return;
+      }
+
+      const asistente = { id: Date.now(), nombre, rut, rol, presente: true };
+      asistentesTemp.push(asistente);
+
+      document.getElementById('asistente-nombre').value = '';
+      document.getElementById('asistente-rut').value = '';
+      document.getElementById('asistente-rol').value = '';
+
+      renderAsistentes();
+      calcularQuorum();
+    }
+
+    function renderAsistentes() {
+      const tbody = document.getElementById('asistentes-tbody');
+      if (asistentesTemp.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500 text-sm">Sin asistentes agregados</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = asistentesTemp.map(a => `
+        <tr>
+          <td class="px-4 py-2">${a.nombre}</td>
+          <td class="px-4 py-2">${a.rut}</td>
+          <td class="px-4 py-2"><span class="bg-purple-100 text-purple-900 text-xs font-bold px-2 py-1 rounded">${a.rol}</span></td>
+          <td class="px-4 py-2 text-center">
+            <input type="checkbox" ${a.presente ? 'checked' : ''} onchange="toggleAsistente(${a.id})" class="cursor-pointer">
+          </td>
+          <td class="px-4 py-2 text-center">
+            <button type="button" onclick="eliminarAsistente(${a.id})" class="text-red-600 hover:underline text-xs font-bold">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function toggleAsistente(id) {
+      const asistente = asistentesTemp.find(a => a.id === id);
+      if (asistente) asistente.presente = !asistente.presente;
+      calcularQuorum();
+    }
+
+    function eliminarAsistente(id) {
+      asistentesTemp = asistentesTemp.filter(a => a.id !== id);
+      renderAsistentes();
+      calcularQuorum();
+    }
+
+    function calcularQuorum() {
+      const presentes = asistentesTemp.filter(a => a.presente).length;
+      const total = asistentesTemp.length;
+      const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+
+      document.getElementById('quorum-presentes').textContent = presentes;
+      document.getElementById('quorum-total').textContent = total;
+      document.getElementById('quorum-porcentaje').textContent = porcentaje;
+    }
+
+    function agregarVotacion() {
+      const numero = parseInt(document.getElementById('votacion-numero').value);
+      const titulo = document.getElementById('votacion-titulo').value.trim();
+      const descripcion = document.getElementById('votacion-descripcion').value.trim();
+      const favor = parseInt(document.getElementById('votacion-favor').value) || 0;
+      const contra = parseInt(document.getElementById('votacion-contra').value) || 0;
+      const abstenciones = parseInt(document.getElementById('votacion-abstenciones').value) || 0;
+
+      if (!numero || !titulo) {
+        alert('Completa número y título');
+        return;
+      }
+
+      const resultado = favor > contra ? 'APROBADO' : favor < contra ? 'RECHAZADO' : 'EMPATE';
+      const votacion = { id: Date.now(), numero, titulo, descripcion, favor, contra, abstenciones, resultado };
+      votacionesTemp.push(votacion);
+
+      document.getElementById('votacion-numero').value = '';
+      document.getElementById('votacion-titulo').value = '';
+      document.getElementById('votacion-descripcion').value = '';
+      document.getElementById('votacion-favor').value = '0';
+      document.getElementById('votacion-contra').value = '0';
+      document.getElementById('votacion-abstenciones').value = '0';
+
+      renderVotaciones();
+    }
+
+    function renderVotaciones() {
+      const tbody = document.getElementById('votaciones-tbody');
+      if (votacionesTemp.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-4 text-center text-gray-500 text-sm">Sin votaciones agregadas</td></tr>';
+        return;
+      }
+
+      const colorMap = {
+        'APROBADO': 'green',
+        'RECHAZADO': 'red',
+        'EMPATE': 'gray'
+      };
+
+      tbody.innerHTML = votacionesTemp.map(v => {
+        const color = colorMap[v.resultado];
+        return `
+          <tr>
+            <td class="px-4 py-2 font-bold">${v.numero}</td>
+            <td class="px-4 py-2">${v.titulo}</td>
+            <td class="px-4 py-2 text-center text-green-600 font-bold">${v.favor}</td>
+            <td class="px-4 py-2 text-center text-red-600 font-bold">${v.contra}</td>
+            <td class="px-4 py-2 text-center text-yellow-600 font-bold">${v.abstenciones}</td>
+            <td class="px-4 py-2 text-center">
+              <span class="px-3 py-1 bg-${color}-100 text-${color}-900 text-xs font-bold rounded">${v.resultado}</span>
+            </td>
+            <td class="px-4 py-2 text-center">
+              <button type="button" onclick="eliminarVotacion(${v.id})" class="text-red-600 hover:underline text-xs font-bold">Eliminar</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function eliminarVotacion(id) {
+      votacionesTemp = votacionesTemp.filter(v => v.id !== id);
+      renderVotaciones();
     }
   </script>
 </body>
