@@ -297,6 +297,86 @@
               </div>
             </div>
 
+            <!-- 📋 TEMAS / ORDEN DEL DÍA (solo Comité) -->
+            <div id="section-temas" class="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <h4 class="font-bold text-lg mb-4">📋 Orden del Día / Temas</h4>
+
+              <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
+                <h5 class="font-bold mb-4">Nuevo Tema</h5>
+
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Título del Tema</label>
+                  <input type="text" id="tema-titulo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Revisión de seguridad del edificio">
+                </div>
+
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                  <textarea id="tema-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-20" placeholder="Detalles del tema a tratar"></textarea>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Conclusiones</label>
+                    <textarea id="tema-conclusiones" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-20" placeholder="Conclusiones del tema"></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
+                    <textarea id="tema-observaciones" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-20" placeholder="Observaciones importantes"></textarea>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Pendientes</label>
+                  <textarea id="tema-pendientes" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Ej: Solicitar presupuesto a proveedores, Revisar normativa"></textarea>
+                </div>
+
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Acuerdos Tomados</label>
+                  <textarea id="tema-acuerdos" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-20" placeholder="Ej: Se aprueba implementación de cámaras de seguridad"></textarea>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Responsable</label>
+                    <input type="text" id="tema-responsable" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Nombre de responsable">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Límite</label>
+                    <input type="date" id="tema-fecha-limite" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                  </div>
+                </div>
+
+                <button type="button" onclick="agregarTema()" class="w-full px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Agregar Tema</button>
+              </div>
+
+              <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-100 border-b">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-bold">#</th>
+                      <th class="px-4 py-3 text-left font-bold">Título</th>
+                      <th class="px-4 py-3 text-left font-bold">Responsable</th>
+                      <th class="px-4 py-3 text-left font-bold">Fecha Límite</th>
+                      <th class="px-4 py-3 text-center font-bold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="temas-tbody" class="divide-y">
+                    <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500 text-sm">Sin temas agregados</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div id="tema-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-6">
+                  <h3 class="font-bold text-lg mb-4">Detalles del Tema</h3>
+                  <div id="tema-detail-content" class="text-sm text-gray-700 space-y-4"></div>
+                  <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="cerrarModalTema()" class="px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 2️⃣ ASISTENTES (solo Asamblea) -->
             <div id="section-asistentes" class="hidden mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
               <h4 class="font-bold text-lg mb-4">👥 Asistentes</h4>
@@ -685,6 +765,12 @@
         return;
       }
 
+      // Validar que Comité tenga al menos 1 tema
+      if (tipo === 'comite' && temasTemp.length === 0) {
+        alert('Agrega al menos 1 tema al acta de comité');
+        return;
+      }
+
       // Validar quórum para asambleas
       if (tipo.includes('asamblea')) {
         if (asistentesTemp.length === 0) {
@@ -706,13 +792,31 @@
       }
 
       try {
+        let contenidoActa = `# ACTA ${tipo.toUpperCase().replace(/_/g, ' ')}\n\n`;
+        contenidoActa += `**Fecha:** ${fecha_reunion}\n`;
+        contenidoActa += `**Hora:** ${hora_inicio} - ${hora_cierre}\n`;
+        contenidoActa += `**Lugar:** ${lugar}\n\n`;
+
+        if (tipo === 'comite' && temasTemp.length > 0) {
+          contenidoActa += `## ORDEN DEL DÍA\n\n`;
+          temasTemp.forEach(t => {
+            contenidoActa += `### Tema ${t.numero}: ${t.titulo}\n`;
+            contenidoActa += `**Descripción:** ${t.descripcion}\n\n`;
+            contenidoActa += `**Conclusiones:** ${t.conclusiones}\n\n`;
+            contenidoActa += `**Observaciones:** ${t.observaciones}\n\n`;
+            contenidoActa += `**Pendientes:** ${t.pendientes}\n\n`;
+            contenidoActa += `**Acuerdos:** ${t.acuerdos}\n\n`;
+            contenidoActa += `**Responsable:** ${t.responsable} | **Fecha Límite:** ${t.fecha_limite}\n\n---\n\n`;
+          });
+        }
+
         const responseActa = await fetch(`${API_BASE}/api/actas`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({
             titulo,
             tipo,
-            contenido: '[Contenido generado]',
+            contenido: contenidoActa,
             fecha_reunion
           })
         });
@@ -743,8 +847,8 @@
         }
 
         hideNewActaForm();
-        limpiarFormularioActa();
         loadActas();
+        limpiarFormularioActa();
         alert('✅ Acta guardada correctamente');
       } catch (error) {
         console.error(error);
@@ -763,8 +867,10 @@
       document.getElementById('acta-periodo-inicio').value = '';
       document.getElementById('acta-periodo-fin').value = '';
       document.getElementById('acta-motivo-extraordinaria').value = '';
+      temasTemp = [];
       asistentesTemp = [];
       votacionesTemp = [];
+      renderTemas();
       renderAsistentes();
       renderVotaciones();
       onActaTipoChange();
@@ -796,7 +902,9 @@
       actaTipoActual = document.getElementById('acta-tipo').value;
       const esAsamblea = actaTipoActual.includes('asamblea');
       const esExtraordinaria = actaTipoActual === 'asamblea_extraordinaria';
+      const esComite = actaTipoActual === 'comite';
 
+      document.getElementById('section-temas').classList.toggle('hidden', !esComite);
       document.getElementById('section-asistentes').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-votaciones').classList.toggle('hidden', !esAsamblea);
       document.getElementById('section-rut').classList.toggle('hidden', !esAsamblea);
@@ -804,8 +912,10 @@
       document.getElementById('section-motivo-extraordinaria').classList.toggle('hidden', !esExtraordinaria);
       document.getElementById('quorum-summary').classList.toggle('hidden', !esAsamblea);
 
+      temasTemp = [];
       asistentesTemp = [];
       votacionesTemp = [];
+      renderTemas();
       renderAsistentes();
       renderVotaciones();
     }
@@ -967,6 +1077,140 @@
     function eliminarVotacion(id) {
       votacionesTemp = votacionesTemp.filter(v => v.id !== id);
       renderVotaciones();
+    }
+
+    // ========== PASO 3D-3E: TEMAS PARA COMITÉ ==========
+    let temasTemp = [];
+
+    function agregarTema() {
+      const titulo = document.getElementById('tema-titulo').value.trim();
+      const descripcion = document.getElementById('tema-descripcion').value.trim();
+      const conclusiones = document.getElementById('tema-conclusiones').value.trim();
+      const observaciones = document.getElementById('tema-observaciones').value.trim();
+      const pendientes = document.getElementById('tema-pendientes').value.trim();
+      const acuerdos = document.getElementById('tema-acuerdos').value.trim();
+      const responsable = document.getElementById('tema-responsable').value.trim();
+      const fecha_limite = document.getElementById('tema-fecha-limite').value;
+
+      if (!titulo) {
+        alert('El título del tema es obligatorio');
+        return;
+      }
+
+      const numeroTema = temasTemp.length + 1;
+      const tema = {
+        id: Date.now(),
+        numero: numeroTema,
+        titulo,
+        descripcion,
+        conclusiones,
+        observaciones,
+        pendientes,
+        acuerdos,
+        responsable: responsable || '[Sin asignar]',
+        fecha_limite: fecha_limite || '[Sin fecha]'
+      };
+
+      temasTemp.push(tema);
+
+      document.getElementById('tema-titulo').value = '';
+      document.getElementById('tema-descripcion').value = '';
+      document.getElementById('tema-conclusiones').value = '';
+      document.getElementById('tema-observaciones').value = '';
+      document.getElementById('tema-pendientes').value = '';
+      document.getElementById('tema-acuerdos').value = '';
+      document.getElementById('tema-responsable').value = '';
+      document.getElementById('tema-fecha-limite').value = '';
+
+      renderTemas();
+    }
+
+    function renderTemas() {
+      const tbody = document.getElementById('temas-tbody');
+      if (temasTemp.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500 text-sm">Sin temas agregados</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = temasTemp.map(t => `
+        <tr>
+          <td class="px-4 py-3 font-bold">${t.numero}</td>
+          <td class="px-4 py-3">${t.titulo}</td>
+          <td class="px-4 py-3"><span class="bg-blue-100 text-blue-900 text-xs font-bold px-2 py-1 rounded">${t.responsable}</span></td>
+          <td class="px-4 py-3 text-sm">${t.fecha_limite}</td>
+          <td class="px-4 py-3 text-center flex gap-2 justify-center">
+            <button type="button" onclick="verDetallesTema(${t.id})" class="text-blue-600 hover:underline text-xs font-bold">Ver</button>
+            <button type="button" onclick="eliminarTema(${t.id})" class="text-red-600 hover:underline text-xs font-bold">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function verDetallesTema(id) {
+      const tema = temasTemp.find(t => t.id === id);
+      if (!tema) return;
+
+      const modal = document.getElementById('tema-detail-modal');
+      const content = document.getElementById('tema-detail-content');
+
+      content.innerHTML = `
+        <div>
+          <p class="font-bold text-lg text-purple-600">Tema ${tema.numero}: ${tema.titulo}</p>
+        </div>
+
+        <div class="border-t pt-4">
+          <p class="font-bold">📝 Descripción:</p>
+          <p>${tema.descripcion || '[Sin descripción]'}</p>
+        </div>
+
+        <div class="border-t pt-4">
+          <p class="font-bold">✅ Conclusiones:</p>
+          <p>${tema.conclusiones || '[Sin conclusiones]'}</p>
+        </div>
+
+        <div class="border-t pt-4">
+          <p class="font-bold">🔍 Observaciones:</p>
+          <p>${tema.observaciones || '[Sin observaciones]'}</p>
+        </div>
+
+        <div class="border-t pt-4">
+          <p class="font-bold">⏳ Pendientes:</p>
+          <p>${tema.pendientes || '[Sin pendientes]'}</p>
+        </div>
+
+        <div class="border-t pt-4">
+          <p class="font-bold">🤝 Acuerdos:</p>
+          <p>${tema.acuerdos || '[Sin acuerdos]'}</p>
+        </div>
+
+        <div class="border-t pt-4 grid md:grid-cols-2 gap-4">
+          <div>
+            <p class="font-bold">👤 Responsable:</p>
+            <p>${tema.responsable}</p>
+          </div>
+          <div>
+            <p class="font-bold">📅 Fecha Límite:</p>
+            <p>${tema.fecha_limite}</p>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    }
+
+    function cerrarModalTema() {
+      document.getElementById('tema-detail-modal').classList.add('hidden');
+    }
+
+    function eliminarTema(id) {
+      if (!confirm('¿Eliminar este tema?')) return;
+      temasTemp = temasTemp.filter(t => t.id !== id);
+
+      temasTemp.forEach((t, idx) => {
+        t.numero = idx + 1;
+      });
+
+      renderTemas();
     }
   </script>
 </body>
