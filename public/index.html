@@ -1560,13 +1560,20 @@
 
         if (data.success) {
           console.log('🎉 Votación creada exitosamente, ID:', data.id);
+
+          console.log('🔄 Cerrando formulario...');
           hideNewVotacionForm();
+          const formElement = document.getElementById('new-votacion-form');
+          console.log('Formulario tiene clase hidden:', formElement.classList.contains('hidden'));
 
           console.log('🔄 Llamando loadVotaciones()...');
           await loadVotaciones();
 
           console.log('✅ Tabla actualizada');
-          alert('✅ Votación creada');
+
+          setTimeout(() => {
+            alert('✅ Votación creada');
+          }, 300);
         } else {
           console.error('❌ Error en respuesta:', data.error);
           alert('Error: ' + data.error);
@@ -1620,7 +1627,7 @@
           return;
         }
 
-        document.getElementById('votaciones-tbody').innerHTML = votaciones.map(v => {
+        const html = votaciones.map(v => {
           console.log('Procesando votación:', v.id, v.titulo);
           const miVotoTexto = v.miVoto ? '✅ Votado' : '⏳ Sin votar';
           const estadoBadge = v.estado === 'abierta'
@@ -1647,6 +1654,8 @@
           `;
         }).join('');
 
+        console.log('📝 HTML generado:', html.substring(0, 100) + '...');
+        document.getElementById('votaciones-tbody').innerHTML = html;
         console.log('✅ Tabla de votaciones actualizada');
       } catch (error) {
         console.error('❌ Error en loadVotaciones:', error);
