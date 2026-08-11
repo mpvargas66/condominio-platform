@@ -40,12 +40,42 @@ function initDb() {
       titulo TEXT NOT NULL,
       tipo TEXT DEFAULT 'comite',
       contenido TEXT,
-      estado TEXT DEFAULT 'borrador',
-      usuario_id INTEGER,
       fecha_reunion DATE,
+      hora_inicio TEXT,
+      hora_cierre TEXT,
+      lugar TEXT,
+      estado TEXT DEFAULT 'borrador',
+      usuario_id INTEGER NOT NULL,
       fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
       fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS asistentes_actas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      acta_id INTEGER NOT NULL,
+      usuario_id INTEGER,
+      nombre TEXT,
+      rut TEXT,
+      rol TEXT,
+      presente BOOLEAN DEFAULT 1,
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(acta_id) REFERENCES actas(id),
+      FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS votaciones_actas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      acta_id INTEGER NOT NULL,
+      numero INTEGER,
+      titulo TEXT NOT NULL,
+      descripcion TEXT,
+      votos_favor INTEGER DEFAULT 0,
+      votos_contra INTEGER DEFAULT 0,
+      abstenciones INTEGER DEFAULT 0,
+      resultado TEXT,
+      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(acta_id) REFERENCES actas(id)
     );
 
     CREATE TABLE IF NOT EXISTS firmas_actas (
@@ -252,6 +282,78 @@ app.get('/api/actas-templates', verificarToken, (req, res) => {
     }
   };
   res.json(templates);
+});
+
+// ========== ASISTENTES DE ACTAS ==========
+app.post('/api/actas/:id/asistentes', verificarToken, (req, res) => {
+  try {
+    const { nombre, rut, rol, presente } = req.body;
+    const stmt = db.prepare(`
+      INSERT INTO asistentes_actas (acta_id, nombre, rut, rol, presente)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(req.params.id, nombre, rut, rol, presente !== false ? 1 : 0);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/actas/:id/asistentes', verificarToken, (req, res) => {
+  try {
+    const asistentes = db.prepare(`
+      SELECT * FROM asistentes_actas WHERE acta_id = ? ORDER BY presente DESC, nombre ASC
+    `).all(req.params.id);
+    res.json(asistentes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/asistentes/:id', verificarToken, (req, res) => {
+  try {
+    db.prepare(`DELETE FROM asistentes_actas WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== VOTACIONES ==========
+app.post('/api/actas/:id/votaciones', verificarToken, (req, res) => {
+  try {
+    const { numero, titulo, descripcion, votos_favor, votos_contra, abstenciones } = req.body;
+    const resultado = votos_favor > votos_contra ? 'APROBADO' : votos_favor < votos_contra ? 'RECHAZADO' : 'EMPATE';
+
+    const stmt = db.prepare(`
+      INSERT INTO votaciones_actas (acta_id, numero, titulo, descripcion, votos_favor, votos_contra, abstenciones, resultado)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(req.params.id, numero, titulo, descripcion, votos_favor, votos_contra, abstenciones, resultado);
+    res.json({ success: true, id: result.lastInsertRowid, resultado });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/actas/:id/votaciones', verificarToken, (req, res) => {
+  try {
+    const votaciones = db.prepare(`
+      SELECT * FROM votaciones_actas WHERE acta_id = ? ORDER BY numero ASC
+    `).all(req.params.id);
+    res.json(votaciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/votaciones/:id', verificarToken, (req, res) => {
+  try {
+    db.prepare(`DELETE FROM votaciones_actas WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/health', (req, res) => {
