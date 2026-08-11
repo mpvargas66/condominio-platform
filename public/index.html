@@ -815,7 +815,10 @@
     }
 
     // ========== ACTAS FUNCTIONS ==========
-    function showNewActaForm() { document.getElementById('new-acta-form').classList.remove('hidden'); }
+    function showNewActaForm() {
+      document.getElementById('new-acta-form').classList.remove('hidden');
+      onActaTipoChange();
+    }
     function hideNewActaForm() { document.getElementById('new-acta-form').classList.add('hidden'); }
 
     async function loadActas() {
