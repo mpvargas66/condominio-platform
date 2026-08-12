@@ -716,7 +716,13 @@ app.post('/api/documentos/upload', verificarToken, verificarComite, upload.singl
     }
 
     const timestamp = Date.now();
-    const archivoNombre = `${req.comiteId}/${timestamp}-${archivo.originalname}`;
+    // Sanitizar nombre del archivo: solo alfanuméricos, guiones y puntos
+    const extension = archivo.originalname.substring(archivo.originalname.lastIndexOf('.') + 1) || 'bin';
+    const nombreSanitizado = archivo.originalname
+      .substring(0, archivo.originalname.lastIndexOf('.'))
+      .replace(/[^a-z0-9]/gi, '-')
+      .toLowerCase();
+    const archivoNombre = `${req.comiteId}/${timestamp}-${nombreSanitizado}.${extension}`;
 
     const { data: storageData, error: storageError } = await supabase.storage
       .from('documentos')
