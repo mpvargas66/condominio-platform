@@ -173,6 +173,7 @@
         <button onclick="switchTab('actas')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📋 Actas</button>
         <button onclick="switchTab('votaciones')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🗳️ Votaciones</button>
         <button onclick="switchTab('documentos')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📄 Documentos</button>
+        <button onclick="switchTab('proyectos')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🏗️ Proyectos</button>
         <button onclick="switchTab('auditoria')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📊 Auditoría</button>
       </div>
 
@@ -779,6 +780,127 @@
         </div>
       </div>
 
+      <!-- PROYECTOS TAB -->
+      <div id="tab-proyectos" class="tab-content hidden">
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">Gestor de Proyectos</h2>
+          <button onclick="showCrearProyectoForm()" class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Nuevo Proyecto</button>
+        </div>
+
+        <!-- Formulario Crear Proyecto -->
+        <div id="crear-proyecto-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+          <h3 class="text-lg font-bold mb-4">Crear Proyecto</h3>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Proyecto</label>
+            <input type="text" id="proyecto-nombre" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Reparación Ascensor">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+            <textarea id="proyecto-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Detalles del proyecto"></textarea>
+          </div>
+
+          <div class="flex space-x-4">
+            <button onclick="crearProyecto()" class="flex-1 px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Crear</button>
+            <button onclick="hideCrearProyectoForm()" class="flex-1 px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- KANBAN BOARD -->
+        <div class="grid grid-cols-5 gap-4 overflow-x-auto">
+          <!-- COLUMNA: IDEA -->
+          <div class="bg-gray-50 rounded-lg p-4 min-h-96 flex-shrink-0 w-full md:w-auto">
+            <h3 class="font-bold text-gray-900 mb-4">💡 IDEA</h3>
+            <div id="kanban-idea" class="space-y-3 min-h-80 bg-white rounded p-2" ondrop="dropProyecto(event, 'idea')" ondragover="allowDrop(event)">
+              <!-- Proyectos en idea -->
+            </div>
+          </div>
+
+          <!-- COLUMNA: REVISIÓN -->
+          <div class="bg-gray-50 rounded-lg p-4 min-h-96 flex-shrink-0 w-full md:w-auto">
+            <h3 class="font-bold text-gray-900 mb-4">🔍 REVISIÓN</h3>
+            <div id="kanban-revision" class="space-y-3 min-h-80 bg-white rounded p-2" ondrop="dropProyecto(event, 'revision')" ondragover="allowDrop(event)">
+              <!-- Proyectos en revisión -->
+            </div>
+          </div>
+
+          <!-- COLUMNA: APROBADO -->
+          <div class="bg-gray-50 rounded-lg p-4 min-h-96 flex-shrink-0 w-full md:w-auto">
+            <h3 class="font-bold text-gray-900 mb-4">✅ APROBADO</h3>
+            <div id="kanban-aprobado" class="space-y-3 min-h-80 bg-white rounded p-2" ondrop="dropProyecto(event, 'aprobado')" ondragover="allowDrop(event)">
+              <!-- Proyectos aprobados -->
+            </div>
+          </div>
+
+          <!-- COLUMNA: EJECUCIÓN -->
+          <div class="bg-gray-50 rounded-lg p-4 min-h-96 flex-shrink-0 w-full md:w-auto">
+            <h3 class="font-bold text-gray-900 mb-4">⚙️ EJECUCIÓN</h3>
+            <div id="kanban-ejecucion" class="space-y-3 min-h-80 bg-white rounded p-2" ondrop="dropProyecto(event, 'ejecucion')" ondragover="allowDrop(event)">
+              <!-- Proyectos en ejecución -->
+            </div>
+          </div>
+
+          <!-- COLUMNA: COMPLETADO -->
+          <div class="bg-gray-50 rounded-lg p-4 min-h-96 flex-shrink-0 w-full md:w-auto">
+            <h3 class="font-bold text-gray-900 mb-4">🎉 COMPLETADO</h3>
+            <div id="kanban-completado" class="space-y-3 min-h-80 bg-white rounded p-2" ondrop="dropProyecto(event, 'completado')" ondragover="allowDrop(event)">
+              <!-- Proyectos completados -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Detalle del Proyecto -->
+      <div id="proyecto-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="proyecto-modal-nombre" class="text-2xl font-bold text-gray-900"></h2>
+            <button onclick="cerrarProyectoModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p class="text-sm font-semibold text-gray-600">PRESUPUESTO ESTIMADO</p>
+              <p id="proyecto-modal-pres-est" class="text-lg font-bold text-gray-900">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">PRESUPUESTO REAL</p>
+              <p id="proyecto-modal-pres-real" class="text-lg font-bold text-green-600">$0</p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">IMPACTO</p>
+              <p id="proyecto-modal-impacto" class="text-lg font-bold">-</p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">INVERSIÓN</p>
+              <p id="proyecto-modal-inversion" class="text-lg font-bold">-</p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">RESPONSABLE</p>
+              <p id="proyecto-modal-responsable" class="text-lg font-bold">-</p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">PROGRESO</p>
+              <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div id="proyecto-modal-progreso" class="bg-purple-600 h-2 rounded-full" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+            <p class="text-sm font-semibold text-gray-600 mb-2">DESCRIPCIÓN</p>
+            <p id="proyecto-modal-descripcion" class="text-gray-900"></p>
+          </div>
+
+          <div class="flex gap-2 mb-4">
+            <button onclick="editarProyecto()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">✏️ Editar Detalles</button>
+            <button onclick="abrirGastosProyecto()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">💰 Gastos</button>
+            <button onclick="abrirComentariosProyecto()" class="flex-1 px-4 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700">💬 Comentarios</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -838,6 +960,7 @@
       loadActas();
       loadVotaciones();
       loadDocumentos();
+      loadProyectos();
       if (currentUser?.perfil === 'admin') loadAuditoria();
     }
 
@@ -848,6 +971,7 @@
       loadActas();
       loadVotaciones();
       loadDocumentos();
+      loadProyectos();
       if (currentUser.perfil === 'admin') loadAuditoria();
     }
 
@@ -1982,6 +2106,165 @@
       } catch (error) {
         console.error(error);
       }
+    }
+
+    // ========== PROYECTOS ==========
+
+    let proyectoActualId = null;
+
+    function showCrearProyectoForm() {
+      document.getElementById('crear-proyecto-form').classList.remove('hidden');
+    }
+
+    function hideCrearProyectoForm() {
+      document.getElementById('crear-proyecto-form').classList.add('hidden');
+      document.getElementById('proyecto-nombre').value = '';
+      document.getElementById('proyecto-descripcion').value = '';
+    }
+
+    async function crearProyecto() {
+      const nombre = document.getElementById('proyecto-nombre').value.trim();
+      const descripcion = document.getElementById('proyecto-descripcion').value.trim();
+
+      if (!nombre) {
+        alert('Nombre requerido');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ nombre, descripcion })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          hideCrearProyectoForm();
+          loadProyectos();
+          alert('✅ Proyecto creado');
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al crear proyecto');
+      }
+    }
+
+    async function loadProyectos() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const proyectos = await response.json();
+
+        ['idea', 'revision', 'aprobado', 'ejecucion', 'completado'].forEach(estado => {
+          document.getElementById(`kanban-${estado}`).innerHTML = '';
+        });
+
+        proyectos.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'bg-white p-3 rounded-lg border border-gray-300 cursor-move hover:shadow-lg transition';
+          card.draggable = true;
+          card.ondragstart = (e) => dragStart(e, p.id);
+          card.onclick = () => abrirProyectoModal(p.id);
+
+          const impactoColor = p.impacto === 'Alto' ? '🔴' : p.impacto === 'Medio' ? '🟡' : '🟢';
+          const inversionIcon = p.inversion === 'Alta' ? '💰💰' : p.inversion === 'Media' ? '💰' : '💵';
+
+          card.innerHTML = `
+            <p class="font-bold text-gray-900 text-sm">${p.nombre}</p>
+            <div class="text-xs text-gray-600 mt-2">
+              <p>Est: $${(p.presupuesto_estimado || 0).toLocaleString()}</p>
+              <p>Real: $${(p.presupuesto_real || 0).toLocaleString()}</p>
+              <p>${impactoColor} ${p.impacto || '-'} | ${inversionIcon}</p>
+              <p>Resp: ${p.responsable_nombre || '-'}</p>
+              ${p.progreso ? `<div class="w-full bg-gray-200 rounded-full h-1 mt-1"><div class="bg-purple-600 h-1 rounded-full" style="width: ${p.progreso}%"></div></div>` : ''}
+              <p class="mt-1 font-semibold text-gray-700">${p.progreso || 0}%</p>
+            </div>
+          `;
+
+          const estadoMap = {
+            'idea': 'idea',
+            'revision': 'revision',
+            'aprobado': 'aprobado',
+            'ejecucion': 'ejecucion',
+            'completado': 'completado'
+          };
+
+          const columnId = estadoMap[p.estado] || 'idea';
+          document.getElementById(`kanban-${columnId}`).appendChild(card);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function dragStart(e, proyectoId) {
+      e.dataTransfer.setData('proyectoId', proyectoId);
+    }
+
+    async function dropProyecto(e, nuevoEstado) {
+      e.preventDefault();
+      const proyectoId = e.dataTransfer.getData('proyectoId');
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/proyectos/${proyectoId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ estado: nuevoEstado })
+        });
+        loadProyectos();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function abrirProyectoModal(proyectoId) {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const p = await response.json();
+
+        proyectoActualId = proyectoId;
+        document.getElementById('proyecto-modal-nombre').textContent = p.nombre;
+        document.getElementById('proyecto-modal-pres-est').textContent = `$${(p.presupuesto_estimado || 0).toLocaleString()}`;
+        document.getElementById('proyecto-modal-pres-real').textContent = `$${(p.presupuesto_real || 0).toLocaleString()}`;
+        document.getElementById('proyecto-modal-impacto').textContent = p.impacto || '-';
+        document.getElementById('proyecto-modal-inversion').textContent = p.inversion || '-';
+        document.getElementById('proyecto-modal-responsable').textContent = p.responsable_nombre || '-';
+        document.getElementById('proyecto-modal-progreso').style.width = `${p.progreso || 0}%`;
+        document.getElementById('proyecto-modal-descripcion').textContent = p.descripcion || 'Sin descripción';
+
+        document.getElementById('proyecto-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function cerrarProyectoModal() {
+      document.getElementById('proyecto-modal').classList.add('hidden');
+      proyectoActualId = null;
+    }
+
+    function editarProyecto() {
+      alert('Funcionalidad de edición: pendiente de implementar');
+    }
+
+    function abrirGastosProyecto() {
+      alert('Gestor de gastos: pendiente de implementar');
+    }
+
+    function abrirComentariosProyecto() {
+      alert('Comentarios: pendiente de implementar');
     }
   </script>
 </body>
