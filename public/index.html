@@ -2540,22 +2540,9 @@
         let respaldo_url = null;
         let respaldo_nombre = null;
 
-        if (archivo) {
-          const formData = new FormData();
-          formData.append('archivo', archivo);
-
-          const uploadResponse = await fetch(`${API_BASE}/api/documentos/upload?comite_id=${localStorage.getItem('comiteSeleccionado')}`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-          });
-
-          const uploadData = await uploadResponse.json();
-          if (uploadData.success) {
-            respaldo_url = uploadData.archivo_url;
-            respaldo_nombre = archivo.name;
-          }
-        }
+        // TODO: Implementar upload directo a Supabase Storage
+        // Por ahora: respaldos sin archivo
+        // if (archivo) { ... }
 
         const comiteId = localStorage.getItem('comiteSeleccionado');
         const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/gastos?comite_id=${comiteId}`, {
