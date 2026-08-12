@@ -860,6 +860,419 @@ app.get('/api/auditoria', verificarToken, async (req, res) => {
   }
 });
 
+// ========== PROYECTOS ==========
+
+// 1. POST /api/proyectos - Crear proyecto
+app.post('/api/proyectos', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { nombre, descripcion } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+
+    const { data: proyecto, error: projError } = await supabase
+      .from('proyectos')
+      .insert({
+        nombre,
+        descripcion: descripcion || '',
+        comite_id: req.comiteId,
+        creador_id: req.usuarioId,
+        estado: 'planificacion'
+      })
+      .select()
+      .single();
+
+    if (projError) throw projError;
+
+    registrarAuditoria(req.usuarioId, 'crear_proyecto', `Proyecto: ${nombre}`);
+    res.json({ success: true, id: proyecto.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. GET /api/proyectos - Listar proyectos del comité
+app.get('/api/proyectos', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: proyectos, error } = await supabase
+      .from('proyectos')
+      .select('*, usuarios(nombre), proyecto_detalles(*)')
+      .eq('comite_id', req.comiteId)
+      .order('fecha_creacion', { ascending: false });
+
+    if (error) throw error;
+
+    const result = proyectos.map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      estado: p.estado,
+      presupuesto_estimado: p.proyecto_detalles?.[0]?.presupuesto_estimado || 0,
+      presupuesto_real: p.proyecto_detalles?.[0]?.presupuesto_real || 0,
+      impacto: p.proyecto_detalles?.[0]?.impacto,
+      inversion: p.proyecto_detalles?.[0]?.inversion,
+      responsable_nombre: p.usuarios?.nombre,
+      progreso: p.proyecto_detalles?.[0]?.progreso || 0
+    }));
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. GET /api/proyectos/:id - Obtener proyecto completo
+app.get('/api/proyectos/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: proyecto, error: projError } = await supabase
+      .from('proyectos')
+      .select('*, usuarios(nombre), proyecto_detalles(*)')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (projError) throw projError;
+
+    const { data: gastos } = await supabase
+      .from('proyecto_gastos')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id);
+
+    const { data: comentarios } = await supabase
+      .from('proyecto_comentarios')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id)
+      .order('fecha_creacion', { ascending: false });
+
+    const { data: historial } = await supabase
+      .from('proyecto_historial')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id)
+      .order('fecha', { ascending: false });
+
+    res.json({
+      ...proyecto,
+      gastos: gastos || [],
+      comentarios: comentarios || [],
+      historial: historial || []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. PUT /api/proyectos/:id - Actualizar proyecto
+app.put('/api/proyectos/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { estado, descripcion, presupuesto_estimado, presupuesto_real, impacto, inversion, responsable_id, progreso, beneficiarios_estimados } = req.body;
+
+    // Obtener proyecto actual para comparar
+    const { data: proyectoActual } = await supabase
+      .from('proyectos')
+      .select('*, proyecto_detalles(*)')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    // Actualizar proyecto base
+    if (estado !== undefined || descripcion !== undefined) {
+      const { error: updateError } = await supabase
+        .from('proyectos')
+        .update({
+          ...(estado && { estado }),
+          ...(descripcion && { descripcion })
+        })
+        .eq('id', req.params.id)
+        .eq('comite_id', req.comiteId);
+
+      if (updateError) throw updateError;
+    }
+
+    // Actualizar detalles
+    if (presupuesto_estimado !== undefined || presupuesto_real !== undefined || impacto !== undefined || inversion !== undefined || progreso !== undefined || beneficiarios_estimados !== undefined) {
+      const { error: detallError } = await supabase
+        .from('proyecto_detalles')
+        .update({
+          ...(presupuesto_estimado !== undefined && { presupuesto_estimado }),
+          ...(presupuesto_real !== undefined && { presupuesto_real }),
+          ...(impacto && { impacto }),
+          ...(inversion && { inversion }),
+          ...(responsable_id && { responsable_id }),
+          ...(progreso !== undefined && { progreso }),
+          ...(beneficiarios_estimados !== undefined && { beneficiarios_estimados })
+        })
+        .eq('proyecto_id', req.params.id);
+
+      if (detallError) throw detallError;
+    }
+
+    // Registrar cambios en historial
+    const cambios = [];
+    if (estado && estado !== proyectoActual.estado) cambios.push({ campo: 'estado', anterior: proyectoActual.estado, nuevo: estado });
+    if (descripcion && descripcion !== proyectoActual.descripcion) cambios.push({ campo: 'descripcion', anterior: proyectoActual.descripcion, nuevo: descripcion });
+    if (presupuesto_estimado !== undefined && presupuesto_estimado !== proyectoActual.proyecto_detalles?.[0]?.presupuesto_estimado) cambios.push({ campo: 'presupuesto_estimado', anterior: proyectoActual.proyecto_detalles?.[0]?.presupuesto_estimado, nuevo: presupuesto_estimado });
+    if (presupuesto_real !== undefined && presupuesto_real !== proyectoActual.proyecto_detalles?.[0]?.presupuesto_real) cambios.push({ campo: 'presupuesto_real', anterior: proyectoActual.proyecto_detalles?.[0]?.presupuesto_real, nuevo: presupuesto_real });
+    if (progreso !== undefined && progreso !== proyectoActual.proyecto_detalles?.[0]?.progreso) cambios.push({ campo: 'progreso', anterior: proyectoActual.proyecto_detalles?.[0]?.progreso, nuevo: progreso });
+
+    for (const cambio of cambios) {
+      await supabase.from('proyecto_historial').insert({
+        proyecto_id: req.params.id,
+        usuario_id: req.usuarioId,
+        campo_cambio: cambio.campo,
+        valor_anterior: String(cambio.anterior),
+        valor_nuevo: String(cambio.nuevo)
+      });
+    }
+
+    registrarAuditoria(req.usuarioId, 'actualizar_proyecto', `Proyecto ${req.params.id}: ${cambios.length} cambios`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. DELETE /api/proyectos/:id - Eliminar proyecto
+app.delete('/api/proyectos/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: proyecto } = await supabase
+      .from('proyectos')
+      .select('creador_id')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (req.usuarioPerfil !== 'admin' && proyecto?.creador_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    await supabase.from('proyecto_gastos').delete().eq('proyecto_id', req.params.id);
+    await supabase.from('proyecto_comentarios').delete().eq('proyecto_id', req.params.id);
+    await supabase.from('proyecto_historial').delete().eq('proyecto_id', req.params.id);
+    await supabase.from('proyecto_detalles').delete().eq('proyecto_id', req.params.id);
+
+    const { error } = await supabase
+      .from('proyectos')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'eliminar_proyecto', `Proyecto ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 6. POST /api/proyectos/:id/gastos - Crear gasto
+app.post('/api/proyectos/:id/gastos', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { concepto, monto, fecha_gasto, respaldo_nombre, respaldo_url } = req.body;
+
+    if (!concepto || !monto) {
+      return res.status(400).json({ error: 'Concepto y monto requeridos' });
+    }
+
+    const { data: gasto, error: gastoError } = await supabase
+      .from('proyecto_gastos')
+      .insert({
+        proyecto_id: req.params.id,
+        usuario_id: req.usuarioId,
+        concepto,
+        monto,
+        fecha_gasto: fecha_gasto || new Date().toISOString(),
+        respaldo_nombre,
+        respaldo_url
+      })
+      .select()
+      .single();
+
+    if (gastoError) throw gastoError;
+
+    // Actualizar presupuesto_real
+    const { data: detalles } = await supabase
+      .from('proyecto_detalles')
+      .select('presupuesto_real')
+      .eq('proyecto_id', req.params.id)
+      .single();
+
+    const nuevoPresupuesto = (detalles?.presupuesto_real || 0) + monto;
+    await supabase
+      .from('proyecto_detalles')
+      .update({ presupuesto_real: nuevoPresupuesto })
+      .eq('proyecto_id', req.params.id);
+
+    registrarAuditoria(req.usuarioId, 'agregar_gasto', `Gasto: ${concepto} - ${monto}`);
+    res.json({ success: true, id: gasto.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 7. GET /api/proyectos/:id/gastos - Listar gastos
+app.get('/api/proyectos/:id/gastos', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: gastos, error } = await supabase
+      .from('proyecto_gastos')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id)
+      .order('fecha_gasto', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(gastos.map(g => ({
+      id: g.id,
+      concepto: g.concepto,
+      monto: g.monto,
+      fecha_gasto: g.fecha_gasto,
+      usuario_nombre: g.usuarios?.nombre,
+      respaldo_url: g.respaldo_url
+    })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. DELETE /api/proyectos/:id/gastos/:gasto_id - Eliminar gasto
+app.delete('/api/proyectos/:id/gastos/:gasto_id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: gasto } = await supabase
+      .from('proyecto_gastos')
+      .select('monto, usuario_id')
+      .eq('id', req.params.gasto_id)
+      .single();
+
+    if (req.usuarioPerfil !== 'admin' && gasto?.usuario_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    // Restar del presupuesto_real
+    const { data: detalles } = await supabase
+      .from('proyecto_detalles')
+      .select('presupuesto_real')
+      .eq('proyecto_id', req.params.id)
+      .single();
+
+    const nuevoPresupuesto = Math.max(0, (detalles?.presupuesto_real || 0) - gasto.monto);
+    await supabase
+      .from('proyecto_detalles')
+      .update({ presupuesto_real: nuevoPresupuesto })
+      .eq('proyecto_id', req.params.id);
+
+    const { error } = await supabase
+      .from('proyecto_gastos')
+      .delete()
+      .eq('id', req.params.gasto_id);
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'eliminar_gasto', `Gasto ${req.params.gasto_id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. POST /api/proyectos/:id/comentarios - Crear comentario
+app.post('/api/proyectos/:id/comentarios', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { contenido } = req.body;
+
+    if (!contenido) {
+      return res.status(400).json({ error: 'Contenido requerido' });
+    }
+
+    const { data: comentario, error: comentError } = await supabase
+      .from('proyecto_comentarios')
+      .insert({
+        proyecto_id: req.params.id,
+        usuario_id: req.usuarioId,
+        contenido
+      })
+      .select()
+      .single();
+
+    if (comentError) throw comentError;
+
+    registrarAuditoria(req.usuarioId, 'comentar_proyecto', `Proyecto ${req.params.id}`);
+    res.json({ success: true, id: comentario.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 10. GET /api/proyectos/:id/comentarios - Listar comentarios
+app.get('/api/proyectos/:id/comentarios', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: comentarios, error } = await supabase
+      .from('proyecto_comentarios')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id)
+      .order('fecha_creacion', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(comentarios.map(c => ({
+      id: c.id,
+      usuario_nombre: c.usuarios?.nombre,
+      contenido: c.contenido,
+      fecha_creacion: c.fecha_creacion
+    })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 11. DELETE /api/proyectos/:id/comentarios/:comentario_id - Eliminar comentario
+app.delete('/api/proyectos/:id/comentarios/:comentario_id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: comentario } = await supabase
+      .from('proyecto_comentarios')
+      .select('usuario_id')
+      .eq('id', req.params.comentario_id)
+      .single();
+
+    if (req.usuarioPerfil !== 'admin' && comentario?.usuario_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    const { error } = await supabase
+      .from('proyecto_comentarios')
+      .delete()
+      .eq('id', req.params.comentario_id);
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'eliminar_comentario', `Comentario ${req.params.comentario_id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 12. GET /api/proyectos/:id/historial - Listar historial
+app.get('/api/proyectos/:id/historial', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: historial, error } = await supabase
+      .from('proyecto_historial')
+      .select('*, usuarios(nombre)')
+      .eq('proyecto_id', req.params.id)
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(historial.map(h => ({
+      id: h.id,
+      usuario_nombre: h.usuarios?.nombre,
+      campo_cambio: h.campo_cambio,
+      valor_anterior: h.valor_anterior,
+      valor_nuevo: h.valor_nuevo,
+      fecha: h.fecha
+    })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== HEALTH ==========
 
 app.get('/api/health', (req, res) => {
