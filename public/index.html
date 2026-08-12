@@ -965,6 +965,82 @@
         </div>
       </div>
 
+      <!-- MODAL: Gestor de Gastos -->
+      <div id="gastos-proyecto-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900">💰 Gastos del Proyecto</h2>
+            <button onclick="cerrarGastosModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <!-- Resumen de presupuesto -->
+          <div class="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p class="text-sm text-gray-600">Presupuesto Estimado</p>
+              <p id="gastos-pres-est" class="text-xl font-bold text-gray-900">$0</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">Total Gastado</p>
+              <p id="gastos-total" class="text-xl font-bold text-red-600">$0</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600">Disponible</p>
+              <p id="gastos-disponible" class="text-xl font-bold text-green-600">$0</p>
+            </div>
+          </div>
+
+          <!-- Formulario agregar gasto -->
+          <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+            <h3 class="font-bold text-gray-900 mb-3">Agregar Gasto</h3>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
+                <input type="text" id="gasto-concepto" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Ej: Mano de obra">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Monto ($)</label>
+                <input type="number" id="gasto-monto" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="0">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input type="date" id="gasto-fecha" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Respaldo (PDF/Imagen)</label>
+                <input type="file" id="gasto-archivo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" accept=".pdf,.jpg,.jpeg,.png">
+              </div>
+            </div>
+            <button onclick="guardarGasto()" class="w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 text-sm">➕ Agregar Gasto</button>
+          </div>
+
+          <!-- Tabla de gastos -->
+          <div>
+            <h3 class="font-bold text-gray-900 mb-3">Historial de Gastos</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-100 border-b">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Concepto</th>
+                    <th class="px-3 py-2 text-left">Monto</th>
+                    <th class="px-3 py-2 text-left">Fecha</th>
+                    <th class="px-3 py-2 text-left">Usuario</th>
+                    <th class="px-3 py-2 text-left">Respaldo</th>
+                    <th class="px-3 py-2 text-left">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="gastos-tabla" class="divide-y">
+                  <tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">Cargando gastos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <button onclick="cerrarGastosModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -2397,8 +2473,146 @@
       }
     }
 
-    function abrirGastosProyecto() {
-      alert('Gestor de gastos: pendiente de implementar');
+    async function abrirGastosProyecto() {
+      document.getElementById('proyecto-modal').classList.add('hidden');
+      document.getElementById('gastos-proyecto-modal').classList.remove('hidden');
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const p = await response.json();
+
+        document.getElementById('gastos-pres-est').textContent = `$${(p.presupuesto_estimado || 0).toLocaleString()}`;
+        document.getElementById('gastos-total').textContent = `$${(p.presupuesto_real || 0).toLocaleString()}`;
+        const disponible = (p.presupuesto_estimado || 0) - (p.presupuesto_real || 0);
+        document.getElementById('gastos-disponible').textContent = `$${disponible.toLocaleString()}`;
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('gasto-fecha').value = today;
+
+        await cargarGastos();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function cargarGastos() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/gastos?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const gastos = await response.json();
+
+        document.getElementById('gastos-tabla').innerHTML = gastos.map(g => `
+          <tr>
+            <td class="px-3 py-2 text-gray-900 font-medium">${g.concepto}</td>
+            <td class="px-3 py-2 text-red-600 font-bold">$${(g.monto || 0).toLocaleString()}</td>
+            <td class="px-3 py-2 text-gray-600">${new Date(g.fecha_gasto).toLocaleDateString('es-CL')}</td>
+            <td class="px-3 py-2 text-gray-600">${g.usuario_nombre || '-'}</td>
+            <td class="px-3 py-2">
+              ${g.respaldo_url ? `<a href="${g.respaldo_url}" target="_blank" class="text-blue-600 hover:underline text-sm">📎 Ver</a>` : '-'}
+            </td>
+            <td class="px-3 py-2">
+              <button onclick="eliminarGasto(${g.id})" class="text-red-600 hover:underline text-sm font-bold">🗑️</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">Sin gastos registrados</td></tr>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function guardarGasto() {
+      const concepto = document.getElementById('gasto-concepto').value.trim();
+      const monto = parseFloat(document.getElementById('gasto-monto').value);
+      const fecha_gasto = document.getElementById('gasto-fecha').value;
+      const archivo = document.getElementById('gasto-archivo').files[0];
+
+      if (!concepto || !monto || !fecha_gasto) {
+        alert('Concepto, monto y fecha requeridos');
+        return;
+      }
+
+      try {
+        let respaldo_url = null;
+        let respaldo_nombre = null;
+
+        if (archivo) {
+          const formData = new FormData();
+          formData.append('archivo', archivo);
+
+          const uploadResponse = await fetch(`${API_BASE}/api/documentos/upload?comite_id=${localStorage.getItem('comiteSeleccionado')}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+
+          const uploadData = await uploadResponse.json();
+          if (uploadData.success) {
+            respaldo_url = uploadData.archivo_url;
+            respaldo_nombre = archivo.name;
+          }
+        }
+
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/gastos?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            concepto,
+            monto,
+            fecha_gasto,
+            respaldo_url,
+            respaldo_nombre
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('gasto-concepto').value = '';
+          document.getElementById('gasto-monto').value = '';
+          document.getElementById('gasto-archivo').value = '';
+
+          await cargarGastos();
+          await abrirGastosProyecto();
+
+          alert('✅ Gasto registrado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar gasto');
+      }
+    }
+
+    async function eliminarGasto(gastoId) {
+      if (!confirm('¿Eliminar este gasto?')) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/gastos/${gastoId}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          await cargarGastos();
+          await abrirGastosProyecto();
+          alert('✅ Gasto eliminado');
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function cerrarGastosModal() {
+      document.getElementById('gastos-proyecto-modal').classList.add('hidden');
+      abrirProyectoModal(proyectoActualId);
     }
 
     function abrirComentariosProyecto() {
