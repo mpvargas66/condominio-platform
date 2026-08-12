@@ -24,6 +24,33 @@ const verificarToken = (req, res, next) => {
   }
 };
 
+// Middleware multi-tenant
+const verificarComite = async (req, res, next) => {
+  try {
+    const comiteId = req.body.comite_id || req.query.comite_id || req.params.comite_id;
+
+    if (!comiteId) {
+      return res.status(400).json({ error: 'comite_id requerido' });
+    }
+
+    const { data: acceso } = await supabase
+      .from('usuarios_comites')
+      .select('id')
+      .eq('usuario_id', req.usuarioId)
+      .eq('comite_id', comiteId)
+      .single();
+
+    if (!acceso) {
+      return res.status(403).json({ error: 'No tienes acceso a este comité' });
+    }
+
+    req.comiteId = parseInt(comiteId);
+    next();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Registrar en auditoría
 async function registrarAuditoria(usuarioId, accion, detalles) {
   try {
@@ -54,12 +81,25 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
+    // NUEVO: Obtener comités del usuario
+    const { data: comites } = await supabase
+      .from('comites')
+      .select('id, nombre, usuarios_comites(rol)')
+      .eq('usuarios_comites.usuario_id', usuario.id);
+
+    const comitesFormatted = comites?.map(c => ({
+      id: c.id,
+      nombre: c.nombre,
+      rol: c.usuarios_comites?.[0]?.rol || 'miembro'
+    })) || [];
+
     const token = jwt.sign(
       { id: usuario.id, email, perfil: usuario.perfil },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    // ACTUALIZADO: Agregar comites a la respuesta
     res.json({
       success: true,
       token,
@@ -67,7 +107,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: usuario.id,
         email,
         nombre: usuario.nombre,
-        perfil: usuario.perfil
+        perfil: usuario.perfil,
+        comites: comitesFormatted
       }
     });
   } catch (error) {
@@ -154,11 +195,13 @@ app.delete('/api/usuarios/:id', verificarToken, async (req, res) => {
 
 // ========== ACTAS ==========
 
-app.get('/api/actas', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.get('/api/actas', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('actas')
       .select('*, usuarios(nombre)')
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .order('fecha_creacion', { ascending: false });
 
     if (error) throw error;
@@ -174,12 +217,14 @@ app.get('/api/actas', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/actas/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.get('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data: acta, error } = await supabase
       .from('actas')
       .select('*, usuarios(nombre)')
       .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .single();
 
     if (error || !acta) return res.status(404).json({ error: 'Acta no encontrada' });
@@ -195,7 +240,8 @@ app.get('/api/actas/:id', verificarToken, async (req, res) => {
   }
 });
 
-app.post('/api/actas', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite y comite_id al insert
+app.post('/api/actas', verificarToken, verificarComite, async (req, res) => {
   try {
     const { titulo, tipo, contenido, fecha_reunion, hora_inicio, hora_cierre, lugar } = req.body;
 
@@ -204,6 +250,7 @@ app.post('/api/actas', verificarToken, async (req, res) => {
     const { data, error } = await supabase
       .from('actas')
       .insert({
+        comite_id: req.comiteId,  // NUEVO: agregar comite_id
         titulo,
         tipo: tipo || 'comite',
         contenido: contenido || '',
@@ -226,7 +273,8 @@ app.post('/api/actas', verificarToken, async (req, res) => {
   }
 });
 
-app.put('/api/actas/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite y filtro comite_id
+app.put('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { titulo, tipo, contenido, estado } = req.body;
 
@@ -239,7 +287,8 @@ app.put('/api/actas/:id', verificarToken, async (req, res) => {
         estado,
         fecha_actualizacion: new Date().toISOString()
       })
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);  // NUEVO: filtro comite_id
 
     if (error) throw error;
 
@@ -250,12 +299,14 @@ app.put('/api/actas/:id', verificarToken, async (req, res) => {
   }
 });
 
-app.delete('/api/actas/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite y filtro comite_id
+app.delete('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { error } = await supabase
       .from('actas')
       .delete()
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);  // NUEVO: filtro comite_id
 
     if (error) throw error;
 
@@ -268,7 +319,8 @@ app.delete('/api/actas/:id', verificarToken, async (req, res) => {
 
 // ========== ASISTENTES ==========
 
-app.post('/api/actas/:id/asistentes', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.post('/api/actas/:id/asistentes', verificarToken, verificarComite, async (req, res) => {
   try {
     const { nombre, rut, rol, presente } = req.body;
 
@@ -291,7 +343,8 @@ app.post('/api/actas/:id/asistentes', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/actas/:id/asistentes', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.get('/api/actas/:id/asistentes', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('asistentes_actas')
@@ -307,7 +360,8 @@ app.get('/api/actas/:id/asistentes', verificarToken, async (req, res) => {
   }
 });
 
-app.delete('/api/asistentes/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.delete('/api/asistentes/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { error } = await supabase
       .from('asistentes_actas')
@@ -323,7 +377,8 @@ app.delete('/api/asistentes/:id', verificarToken, async (req, res) => {
 
 // ========== TEMAS ==========
 
-app.post('/api/actas/:id/temas', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.post('/api/actas/:id/temas', verificarToken, verificarComite, async (req, res) => {
   try {
     const { numero, titulo } = req.body;
 
@@ -345,7 +400,8 @@ app.post('/api/actas/:id/temas', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/actas/:id/temas', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.get('/api/actas/:id/temas', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('temas_actas')
@@ -360,7 +416,8 @@ app.get('/api/actas/:id/temas', verificarToken, async (req, res) => {
   }
 });
 
-app.put('/api/temas/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.put('/api/temas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { descripcion, conclusiones, observaciones, pendientes, acuerdos, responsable, fecha_limite, estado } = req.body;
 
@@ -388,7 +445,8 @@ app.put('/api/temas/:id', verificarToken, async (req, res) => {
   }
 });
 
-app.delete('/api/temas/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.delete('/api/temas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { error } = await supabase
       .from('temas_actas')
@@ -404,7 +462,8 @@ app.delete('/api/temas/:id', verificarToken, async (req, res) => {
 
 // ========== VOTACIONES INDEPENDIENTES ==========
 
-app.post('/api/votaciones', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite y comite_id al insert
+app.post('/api/votaciones', verificarToken, verificarComite, async (req, res) => {
   try {
     const { titulo, descripcion, tipo, opciones } = req.body;
     if (!titulo || !opciones || opciones.length < 2) {
@@ -414,6 +473,7 @@ app.post('/api/votaciones', verificarToken, async (req, res) => {
     const { data: votacion, error } = await supabase
       .from('votaciones')
       .insert({
+        comite_id: req.comiteId,  // NUEVO: agregar comite_id
         titulo,
         descripcion: descripcion || '',
         tipo: tipo || 'abierta',
@@ -440,11 +500,13 @@ app.post('/api/votaciones', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/votaciones', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite y filtro comite_id
+app.get('/api/votaciones', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data: votaciones, error } = await supabase
       .from('votaciones')
       .select('*, usuarios(nombre)')
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .order('fecha_creacion', { ascending: false });
 
     if (error) throw error;
@@ -486,12 +548,14 @@ app.get('/api/votaciones', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/api/votaciones/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.get('/api/votaciones/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data: votacion, error } = await supabase
       .from('votaciones')
       .select('*')
       .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .single();
 
     if (error || !votacion) return res.status(404).json({ error: 'Votación no encontrada' });
@@ -527,7 +591,8 @@ app.get('/api/votaciones/:id', verificarToken, async (req, res) => {
   }
 });
 
-app.post('/api/votaciones/:id/votar', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.post('/api/votaciones/:id/votar', verificarToken, verificarComite, async (req, res) => {
   try {
     const { opcion_id } = req.body;
     if (!opcion_id) return res.status(400).json({ error: 'Opción requerida' });
@@ -536,6 +601,7 @@ app.post('/api/votaciones/:id/votar', verificarToken, async (req, res) => {
       .from('votaciones')
       .select('estado')
       .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .single();
 
     if (votacion?.estado === 'cerrada') {
@@ -570,12 +636,14 @@ app.post('/api/votaciones/:id/votar', verificarToken, async (req, res) => {
   }
 });
 
-app.put('/api/votaciones/:id/cerrar', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.put('/api/votaciones/:id/cerrar', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data: votacion } = await supabase
       .from('votaciones')
       .select('usuario_creador_id')
       .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
       .single();
 
     if (req.usuarioPerfil !== 'admin' && votacion?.usuario_creador_id !== req.usuarioId) {
@@ -588,7 +656,8 @@ app.put('/api/votaciones/:id/cerrar', verificarToken, async (req, res) => {
         estado: 'cerrada',
         fecha_cierre: new Date().toISOString()
       })
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);  // NUEVO: filtro comite_id
 
     if (error) throw error;
 
@@ -599,13 +668,14 @@ app.put('/api/votaciones/:id/cerrar', verificarToken, async (req, res) => {
   }
 });
 
-app.delete('/api/votaciones/:id', verificarToken, async (req, res) => {
+// ACTUALIZADO: Agregar verificarComite
+app.delete('/api/votaciones/:id', verificarToken, verificarComite, async (req, res) => {
   try {
     const { data: votacion } = await supabase
       .from('votaciones')
       .select('usuario_creador_id')
       .eq('id', req.params.id)
-      .single();
+      .eq('comite_id', req.comiteId);  // NUEVO: filtro comite_id
 
     if (req.usuarioPerfil !== 'admin' && votacion?.usuario_creador_id !== req.usuarioId) {
       return res.status(403).json({ error: 'No tienes permiso' });
@@ -613,7 +683,7 @@ app.delete('/api/votaciones/:id', verificarToken, async (req, res) => {
 
     await supabase.from('votos_usuarios').delete().eq('votacion_id', req.params.id);
     await supabase.from('opciones_votacion').delete().eq('votacion_id', req.params.id);
-    const { error } = await supabase.from('votaciones').delete().eq('id', req.params.id);
+    const { error } = await supabase.from('votaciones').delete().eq('id', req.params.id).eq('comite_id', req.comiteId);
 
     if (error) throw error;
 
