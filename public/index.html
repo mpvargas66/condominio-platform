@@ -901,6 +901,70 @@
         </div>
       </div>
 
+      <!-- MODAL: Editar Detalles del Proyecto -->
+      <div id="editar-proyecto-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900">Editar Detalles del Proyecto</h2>
+            <button onclick="cerrarEditarModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Presupuesto Estimado ($)</label>
+              <input type="number" id="editar-pres-est" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Presupuesto Real ($)</label>
+              <input type="number" id="editar-pres-real" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0" disabled>
+              <p class="text-xs text-gray-500 mt-1">Se actualiza con los gastos</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Impacto</label>
+              <select id="editar-impacto" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <option value="">-- Seleccionar --</option>
+                <option value="Alto">🔴 Alto</option>
+                <option value="Medio">🟡 Medio</option>
+                <option value="Bajo">🟢 Bajo</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Inversión</label>
+              <select id="editar-inversion" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <option value="">-- Seleccionar --</option>
+                <option value="Alta">💰💰 Alta</option>
+                <option value="Media">💰 Media</option>
+                <option value="Baja">💵 Baja</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Responsable</label>
+              <select id="editar-responsable" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <option value="">-- Sin asignar --</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Progreso (%)</label>
+              <input type="number" id="editar-progreso" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0" min="0" max="100">
+            </div>
+
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Beneficiarios Estimados</label>
+              <input type="number" id="editar-beneficiarios" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0" min="0">
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="guardarDetallesProyecto()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">💾 Guardar Cambios</button>
+            <button onclick="cerrarEditarModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -1065,6 +1129,7 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const usuarios = await response.json();
+        localStorage.setItem('usuarios', JSON.stringify(usuarios));
         document.getElementById('usuarios-tbody').innerHTML = usuarios.map(u => `
           <tr>
             <td class="px-6 py-4 font-medium text-gray-900">${u.nombre}</td>
@@ -2255,8 +2320,81 @@
       proyectoActualId = null;
     }
 
-    function editarProyecto() {
-      alert('Funcionalidad de edición: pendiente de implementar');
+    async function editarProyecto() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const p = await response.json();
+
+        document.getElementById('editar-pres-est').value = p.presupuesto_estimado || '';
+        document.getElementById('editar-pres-real').value = p.presupuesto_real || '';
+        document.getElementById('editar-impacto').value = p.impacto || '';
+        document.getElementById('editar-inversion').value = p.inversion || '';
+        document.getElementById('editar-responsable').value = p.responsable_id || '';
+        document.getElementById('editar-progreso').value = p.progreso || 0;
+        document.getElementById('editar-beneficiarios').value = p.beneficiarios_estimados || '';
+
+        const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+        const responsableSelect = document.getElementById('editar-responsable');
+        responsableSelect.innerHTML = '<option value="">-- Sin asignar --</option>';
+        usuarios.forEach(u => {
+          const option = document.createElement('option');
+          option.value = u.id;
+          option.textContent = u.nombre;
+          if (u.id == p.responsable_id) option.selected = true;
+          responsableSelect.appendChild(option);
+        });
+
+        document.getElementById('proyecto-modal').classList.add('hidden');
+        document.getElementById('editar-proyecto-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+        alert('Error al cargar detalles');
+      }
+    }
+
+    function cerrarEditarModal() {
+      document.getElementById('editar-proyecto-modal').classList.add('hidden');
+      abrirProyectoModal(proyectoActualId);
+    }
+
+    async function guardarDetallesProyecto() {
+      try {
+        const presupuesto_estimado = parseFloat(document.getElementById('editar-pres-est').value) || null;
+        const impacto = document.getElementById('editar-impacto').value || null;
+        const inversion = document.getElementById('editar-inversion').value || null;
+        const responsable_id = parseInt(document.getElementById('editar-responsable').value) || null;
+        const progreso = parseInt(document.getElementById('editar-progreso').value) || 0;
+        const beneficiarios_estimados = parseInt(document.getElementById('editar-beneficiarios').value) || null;
+
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            presupuesto_estimado,
+            impacto,
+            inversion,
+            responsable_id,
+            progreso,
+            beneficiarios_estimados
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          cerrarEditarModal();
+          loadProyectos();
+          alert('✅ Detalles guardados');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar');
+      }
     }
 
     function abrirGastosProyecto() {
