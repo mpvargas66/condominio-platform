@@ -15,6 +15,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
+    "multer": "^2.2.0",
     "pdfkit": "^0.19.1"
   },
   "engines": {

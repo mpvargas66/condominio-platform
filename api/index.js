@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 import supabase from '../supabase-client.js';
 
 const app = express();
@@ -9,6 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }
+});
 
 // Middleware auth
 const verificarToken = (req, res, next) => {
@@ -688,6 +694,133 @@ app.delete('/api/votaciones/:id', verificarToken, verificarComite, async (req, r
     if (error) throw error;
 
     registrarAuditoria(req.usuarioId, 'eliminar_votacion', `Eliminó votación ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== DOCUMENTOS ==========
+
+app.post('/api/documentos/upload', verificarToken, verificarComite, upload.single('archivo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Archivo requerido' });
+    }
+
+    const { nombre, categoria, descripcion } = req.body;
+    const archivo = req.file;
+
+    if (!nombre || !categoria) {
+      return res.status(400).json({ error: 'Nombre y categoría requeridos' });
+    }
+
+    const timestamp = Date.now();
+    const archivoNombre = `${req.comiteId}/${timestamp}-${archivo.originalname}`;
+
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from('documentos')
+      .upload(archivoNombre, archivo.buffer, {
+        contentType: archivo.mimetype
+      });
+
+    if (storageError) throw storageError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('documentos')
+      .getPublicUrl(archivoNombre);
+
+    const { data: documento, error: dbError } = await supabase
+      .from('documentos')
+      .insert({
+        nombre,
+        categoria,
+        descripcion: descripcion || '',
+        archivo_url: publicUrl,
+        archivo_nombre: archivo.originalname,
+        tamaño: archivo.size,
+        usuario_id: req.usuarioId,
+        comite_id: req.comiteId
+      })
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    registrarAuditoria(req.usuarioId, 'subir_documento', `Documento: ${nombre}`);
+    res.json({ success: true, id: documento.id, archivo_url: publicUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/documentos', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('documentos')
+      .select('*, usuarios(nombre)')
+      .eq('comite_id', req.comiteId)
+      .order('fecha_creacion', { ascending: false });
+
+    if (error) throw error;
+
+    const documentos = data.map(d => ({
+      ...d,
+      usuario_nombre: d.usuarios?.nombre || 'Desconocido'
+    }));
+
+    res.json(documentos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/documentos/:id/descargar', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: documento, error } = await supabase
+      .from('documentos')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (error || !documento) {
+      return res.status(404).json({ error: 'Documento no encontrado' });
+    }
+
+    res.json({ success: true, archivo_url: documento.archivo_url });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/documentos/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: documento } = await supabase
+      .from('documentos')
+      .select('usuario_id, archivo_nombre')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (req.usuarioPerfil !== 'admin' && documento?.usuario_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    if (documento?.archivo_nombre) {
+      const archivoPath = `${req.comiteId}/${documento.archivo_nombre}`;
+      await supabase.storage.from('documentos').remove([archivoPath]);
+    }
+
+    const { error: dbError } = await supabase
+      .from('documentos')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);
+
+    if (dbError) throw dbError;
+
+    registrarAuditoria(req.usuarioId, 'eliminar_documento', `Documento ${req.params.id}`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
