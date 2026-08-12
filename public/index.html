@@ -1024,13 +1024,30 @@
       }
     }
 
-    function editarActa(id) {
+    async function editarActa(id) {
+      // Placeholder: será implementado
+      const comiteId = localStorage.getItem('comiteSeleccionado');
+      // const response = await fetch(`${API_BASE}/api/actas/${id}?comite_id=${comiteId}`, {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      //   body: JSON.stringify({ /* datosActa */ })
+      // });
       alert('Funcionalidad de edición próximamente');
     }
 
-    function eliminarActa(id) {
+    async function eliminarActa(id) {
       if (!confirm('¿Eliminar esta acta?')) return;
-      // Implementar delete
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/actas/${id}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadActas();
+        alert('✅ Acta eliminada');
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     async function handleNewActa(e) {
@@ -1704,7 +1721,8 @@
 
     async function abrirVotacionModal(votacionId) {
       try {
-        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}?comite_id=${comiteId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const votacion = await response.json();
@@ -1770,7 +1788,8 @@
       if (!confirm('¿Cerrar esta votación?')) return;
 
       try {
-        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}/cerrar`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/votaciones/${votacionId}/cerrar?comite_id=${comiteId}`, {
           method: 'PUT',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -1787,7 +1806,8 @@
       if (!confirm('¿Eliminar esta votación?')) return;
 
       try {
-        await fetch(`${API_BASE}/api/votaciones/${votacionId}`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/votaciones/${votacionId}?comite_id=${comiteId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
