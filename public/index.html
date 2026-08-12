@@ -172,6 +172,7 @@
         <button onclick="switchTab('usuarios')" class="tab-btn active px-4 py-2 font-bold text-purple-600 border-b-2 border-purple-600">👥 Usuarios</button>
         <button onclick="switchTab('actas')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📋 Actas</button>
         <button onclick="switchTab('votaciones')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🗳️ Votaciones</button>
+        <button onclick="switchTab('documentos')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📄 Documentos</button>
         <button onclick="switchTab('auditoria')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📊 Auditoría</button>
       </div>
 
@@ -714,6 +715,70 @@
         </div>
       </div>
 
+      <!-- DOCUMENTOS -->
+      <div id="tab-documentos" class="tab-content hidden">
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">Gestor Documental</h2>
+          <button onclick="showUploadDocumentoForm()" class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Subir Documento</button>
+        </div>
+
+        <!-- Formulario Subir -->
+        <div id="upload-documento-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+          <h3 class="text-lg font-bold mb-4">Subir Documento</h3>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Archivo</label>
+            <input type="file" id="documento-archivo" class="w-full px-4 py-2 border border-gray-300 rounded-lg" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Documento</label>
+            <input type="text" id="documento-nombre" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Acta Comité Mayo 2026">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Categoría</label>
+            <select id="documento-categoria" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+              <option value="">-- Seleccionar --</option>
+              <option value="actas">Actas</option>
+              <option value="decretos">Decretos</option>
+              <option value="reportes">Reportes</option>
+              <option value="presupuesto">Presupuesto</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+            <textarea id="documento-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Detalles del documento"></textarea>
+          </div>
+
+          <div class="flex space-x-4">
+            <button onclick="subirDocumento()" class="flex-1 px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Subir</button>
+            <button onclick="hideUploadDocumentoForm()" class="flex-1 px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Tabla Documentos -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Nombre</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Categoría</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Descripción</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Tamaño</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Fecha</th>
+                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="documentos-tbody" class="divide-y divide-gray-200">
+              <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Cargando documentos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -772,6 +837,7 @@
       loadUsuarios();
       loadActas();
       loadVotaciones();
+      loadDocumentos();
       if (currentUser?.perfil === 'admin') loadAuditoria();
     }
 
@@ -781,6 +847,7 @@
       loadUsuarios();
       loadActas();
       loadVotaciones();
+      loadDocumentos();
       if (currentUser.perfil === 'admin') loadAuditoria();
     }
 
@@ -1814,6 +1881,107 @@
         loadVotaciones();
         alert('✅ Votación eliminada');
       } catch (error) { console.error(error); }
+    }
+
+    // ========== DOCUMENTOS ==========
+
+    function showUploadDocumentoForm() {
+      document.getElementById('upload-documento-form').classList.remove('hidden');
+    }
+
+    function hideUploadDocumentoForm() {
+      document.getElementById('upload-documento-form').classList.add('hidden');
+      document.getElementById('documento-archivo').value = '';
+      document.getElementById('documento-nombre').value = '';
+      document.getElementById('documento-categoria').value = '';
+      document.getElementById('documento-descripcion').value = '';
+    }
+
+    async function subirDocumento() {
+      const archivo = document.getElementById('documento-archivo').files[0];
+      const nombre = document.getElementById('documento-nombre').value.trim();
+      const categoria = document.getElementById('documento-categoria').value;
+      const descripcion = document.getElementById('documento-descripcion').value.trim();
+
+      if (!archivo || !nombre || !categoria) {
+        alert('Archivo, nombre y categoría requeridos');
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('archivo', archivo);
+        formData.append('nombre', nombre);
+        formData.append('categoria', categoria);
+        formData.append('descripcion', descripcion);
+
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/documentos/upload?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          hideUploadDocumentoForm();
+          loadDocumentos();
+          alert('✅ Documento subido');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al subir documento');
+      }
+    }
+
+    async function loadDocumentos() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/documentos?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const documentos = await response.json();
+
+        document.getElementById('documentos-tbody').innerHTML = documentos.map(d => `
+          <tr>
+            <td class="px-6 py-4 font-medium text-gray-900">${d.nombre}</td>
+            <td class="px-6 py-4 text-sm text-gray-600"><span class="px-2 py-1 bg-blue-100 text-blue-900 text-xs font-bold rounded">${d.categoria}</span></td>
+            <td class="px-6 py-4 text-sm text-gray-600">${d.descripcion || '-'}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${(d.tamaño / 1024).toFixed(2)} KB</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${new Date(d.fecha_creacion).toLocaleDateString('es-CL')}</td>
+            <td class="px-6 py-4 flex gap-2">
+              <a href="${d.archivo_url}" target="_blank" class="text-blue-600 hover:underline text-sm font-bold">📥 Descargar</a>
+              ${currentUser?.id === d.usuario_id || currentUser?.perfil === 'admin' ? `
+                <button onclick="eliminarDocumento(${d.id})" class="text-red-600 hover:underline text-sm font-bold">🗑️ Eliminar</button>
+              ` : ''}
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function eliminarDocumento(documentoId) {
+      if (!confirm('¿Eliminar este documento?')) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/documentos/${documentoId}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          loadDocumentos();
+          alert('✅ Documento eliminado');
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
   </script>
 </body>
