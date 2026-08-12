@@ -874,7 +874,7 @@ app.post('/api/proyectos', verificarToken, verificarComite, async (req, res) => 
         nombre,
         descripcion: descripcion || '',
         comite_id: req.comiteId,
-        creador_id: req.usuarioId,
+        usuario_creador_id: req.usuarioId,
         estado: 'planificacion'
       })
       .select()
@@ -1034,12 +1034,12 @@ app.delete('/api/proyectos/:id', verificarToken, verificarComite, async (req, re
   try {
     const { data: proyecto } = await supabase
       .from('proyectos')
-      .select('creador_id')
+      .select('usuario_creador_id')
       .eq('id', req.params.id)
       .eq('comite_id', req.comiteId)
       .single();
 
-    if (req.usuarioPerfil !== 'admin' && proyecto?.creador_id !== req.usuarioId) {
+    if (req.usuarioPerfil !== 'admin' && proyecto?.usuario_creador_id !== req.usuarioId) {
       return res.status(403).json({ error: 'No tienes permiso' });
     }
 
