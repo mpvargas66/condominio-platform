@@ -1041,6 +1041,49 @@
         </div>
       </div>
 
+      <!-- MODAL: Comentarios y Historial -->
+      <div id="comentarios-proyecto-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900">Comentarios e Historial</h2>
+            <button onclick="cerrarComentariosModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <!-- Agregar Comentario -->
+          <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nuevo Comentario</label>
+            <textarea id="comentario-contenido" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Escribe un comentario..."></textarea>
+            <button onclick="guardarComentario()" class="mt-2 w-full px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">💬 Comentar</button>
+          </div>
+
+          <!-- Tabs: Comentarios vs Historial -->
+          <div class="flex gap-4 mb-4 border-b border-gray-200">
+            <button onclick="switchComentariosTab('comentarios')" id="tab-comentarios-btn" class="pb-2 font-bold text-purple-600 border-b-2 border-purple-600">Comentarios</button>
+            <button onclick="switchComentariosTab('historial')" id="tab-historial-btn" class="pb-2 font-bold text-gray-600">Historial de Cambios</button>
+          </div>
+
+          <!-- TAB: COMENTARIOS -->
+          <div id="tab-comentarios" class="mb-4">
+            <div id="comentarios-lista" class="space-y-3">
+              <!-- Se llena dinámicamente -->
+            </div>
+          </div>
+
+          <!-- TAB: HISTORIAL -->
+          <div id="tab-historial" class="hidden mb-4">
+            <div class="space-y-2">
+              <div id="historial-lista" class="text-sm">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button onclick="cerrarComentariosModal()" class="w-full px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -2602,8 +2645,151 @@
       abrirProyectoModal(proyectoActualId);
     }
 
-    function abrirComentariosProyecto() {
-      alert('Comentarios: pendiente de implementar');
+    // ========== COMENTARIOS E HISTORIAL ==========
+
+    let comentariosTabActivo = 'comentarios';
+
+    async function abrirComentariosProyecto() {
+      document.getElementById('proyecto-modal').classList.add('hidden');
+      document.getElementById('comentarios-proyecto-modal').classList.remove('hidden');
+
+      document.getElementById('comentario-contenido').value = '';
+      await cargarComentarios();
+      await cargarHistorial();
+    }
+
+    function switchComentariosTab(tab) {
+      comentariosTabActivo = tab;
+
+      document.getElementById('tab-comentarios').classList.toggle('hidden', tab !== 'comentarios');
+      document.getElementById('tab-historial').classList.toggle('hidden', tab !== 'historial');
+
+      document.getElementById('tab-comentarios-btn').classList.toggle('text-purple-600 border-b-2 border-purple-600', tab === 'comentarios');
+      document.getElementById('tab-comentarios-btn').classList.toggle('text-gray-600', tab !== 'comentarios');
+
+      document.getElementById('tab-historial-btn').classList.toggle('text-purple-600 border-b-2 border-purple-600', tab === 'historial');
+      document.getElementById('tab-historial-btn').classList.toggle('text-gray-600', tab !== 'historial');
+    }
+
+    async function cargarComentarios() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/comentarios?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const comentarios = await response.json();
+
+        document.getElementById('comentarios-lista').innerHTML = comentarios.map(c => `
+          <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <p class="font-bold text-gray-900">${c.usuario_nombre}</p>
+                <p class="text-xs text-gray-500">${new Date(c.fecha_creacion).toLocaleString('es-CL')}</p>
+              </div>
+              ${currentUser?.id === c.usuario_id || currentUser?.perfil === 'admin' ? `
+                <button onclick="eliminarComentario(${c.id})" class="text-red-600 hover:text-red-800 text-sm">✕</button>
+              ` : ''}
+            </div>
+            <p class="text-gray-900">${c.contenido}</p>
+          </div>
+        `).join('') || '<p class="text-center text-gray-500">Sin comentarios</p>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function cargarHistorial() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/historial?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const historial = await response.json();
+
+        const timelineHTML = historial.map(h => {
+          let cambio = `${h.campo_cambio}: ${h.valor_anterior} → ${h.valor_nuevo}`;
+
+          if (h.campo_cambio === 'estado') {
+            const estados = { 'idea': '💡 IDEA', 'revision': '🔍 REVISIÓN', 'aprobado': '✅ APROBADO', 'ejecucion': '⚙️ EJECUCIÓN', 'completado': '🎉 COMPLETADO' };
+            cambio = `Estado: ${estados[h.valor_anterior] || h.valor_anterior} → ${estados[h.valor_nuevo] || h.valor_nuevo}`;
+          }
+          if (h.campo_cambio === 'progreso') {
+            cambio = `Progreso: ${h.valor_anterior}% → ${h.valor_nuevo}%`;
+          }
+
+          return `
+            <div class="flex gap-3 pb-3 border-b border-gray-200 last:border-b-0">
+              <div class="w-2 h-2 mt-2 bg-purple-600 rounded-full flex-shrink-0"></div>
+              <div>
+                <p class="font-semibold text-gray-900">${h.usuario_nombre}</p>
+                <p class="text-sm text-gray-700">${cambio}</p>
+                <p class="text-xs text-gray-500">${new Date(h.fecha).toLocaleString('es-CL')}</p>
+              </div>
+            </div>
+          `;
+        }).join('') || '<p class="text-center text-gray-500">Sin cambios registrados</p>';
+
+        document.getElementById('historial-lista').innerHTML = timelineHTML;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function guardarComentario() {
+      const contenido = document.getElementById('comentario-contenido').value.trim();
+
+      if (!contenido) {
+        alert('Escribe un comentario');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/comentarios?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ contenido })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('comentario-contenido').value = '';
+          await cargarComentarios();
+          alert('✅ Comentario agregado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar comentario');
+      }
+    }
+
+    async function eliminarComentario(comentarioId) {
+      if (!confirm('¿Eliminar comentario?')) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/proyectos/${proyectoActualId}/comentarios/${comentarioId}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          await cargarComentarios();
+          alert('✅ Comentario eliminado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function cerrarComentariosModal() {
+      document.getElementById('comentarios-proyecto-modal').classList.add('hidden');
+      abrirProyectoModal(proyectoActualId);
     }
   </script>
 </body>
