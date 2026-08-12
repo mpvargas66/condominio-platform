@@ -1273,6 +1273,384 @@ app.get('/api/proyectos/:id/historial', verificarToken, verificarComite, async (
   }
 });
 
+// ========== CHECKLISTS ==========
+
+// HELPER: Calcular progreso del checklist
+async function recalcularProgresoChecklist(checklistId) {
+  const { data: items } = await supabase
+    .from('checklist_items')
+    .select('completado')
+    .eq('checklist_id', checklistId);
+
+  if (!items || items.length === 0) {
+    await supabase.from('checklists').update({ progreso: 0 }).eq('id', checklistId);
+    return 0;
+  }
+
+  const completados = items.filter(i => i.completado).length;
+  const progreso = Math.round((completados / items.length) * 100);
+
+  await supabase.from('checklists').update({ progreso }).eq('id', checklistId);
+  return progreso;
+}
+
+// 1. POST /api/checklists - Crear checklist
+app.post('/api/checklists', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { nombre, descripcion, fecha_vencimiento } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+
+    const { data: checklist, error } = await supabase
+      .from('checklists')
+      .insert({
+        nombre,
+        descripcion: descripcion || '',
+        fecha_vencimiento,
+        comite_id: req.comiteId,
+        creador_id: req.usuarioId,
+        estado: 'pendiente',
+        progreso: 0
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'crear_checklist', `Checklist: ${nombre}`);
+    res.json({ success: true, id: checklist.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. GET /api/checklists - Listar checklists del comité
+app.get('/api/checklists', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: checklists, error } = await supabase
+      .from('checklists')
+      .select('*')
+      .eq('comite_id', req.comiteId)
+      .order('fecha_creacion', { ascending: false });
+
+    if (error) throw error;
+
+    const result = await Promise.all(checklists.map(async (c) => {
+      const { data: items } = await supabase
+        .from('checklist_items')
+        .select('completado')
+        .eq('checklist_id', c.id);
+
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        estado: c.estado,
+        progreso: c.progreso,
+        fecha_vencimiento: c.fecha_vencimiento,
+        responsables_count: items ? items.length : 0,
+        completados_count: items ? items.filter(i => i.completado).length : 0
+      };
+    }));
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. GET /api/checklists/:id - Obtener checklist con items
+app.get('/api/checklists/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: checklist, error: checklistError } = await supabase
+      .from('checklists')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (checklistError) throw checklistError;
+
+    const { data: items } = await supabase
+      .from('checklist_items')
+      .select('*, usuarios(nombre)')
+      .eq('checklist_id', req.params.id)
+      .order('orden', { ascending: true });
+
+    res.json({
+      ...checklist,
+      items: items ? items.map(i => ({
+        ...i,
+        responsable_nombre: i.usuarios?.nombre
+      })) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. PUT /api/checklists/:id - Actualizar checklist
+app.put('/api/checklists/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { estado, fecha_vencimiento, nombre, descripcion } = req.body;
+
+    const { error } = await supabase
+      .from('checklists')
+      .update({
+        ...(estado && { estado }),
+        ...(fecha_vencimiento && { fecha_vencimiento }),
+        ...(nombre && { nombre }),
+        ...(descripcion && { descripcion })
+      })
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'actualizar_checklist', `Checklist ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. DELETE /api/checklists/:id - Eliminar checklist
+app.delete('/api/checklists/:id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: checklist } = await supabase
+      .from('checklists')
+      .select('creador_id')
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (req.usuarioPerfil !== 'admin' && checklist?.creador_id !== req.usuarioId) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+
+    await supabase.from('checklist_items').delete().eq('checklist_id', req.params.id);
+    const { error } = await supabase
+      .from('checklists')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('comite_id', req.comiteId);
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'eliminar_checklist', `Checklist ${req.params.id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 6. POST /api/checklists/:id/items - Agregar item
+app.post('/api/checklists/:id/items', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { titulo, descripcion, responsable_id, orden } = req.body;
+    if (!titulo) return res.status(400).json({ error: 'Título requerido' });
+
+    const { data: item, error } = await supabase
+      .from('checklist_items')
+      .insert({
+        checklist_id: req.params.id,
+        titulo,
+        descripcion: descripcion || '',
+        responsable_id,
+        orden: orden || 0,
+        completado: false
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await recalcularProgresoChecklist(req.params.id);
+
+    registrarAuditoria(req.usuarioId, 'agregar_item_checklist', `Item: ${titulo}`);
+    res.json({ success: true, id: item.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 7. GET /api/checklists/:id/items - Listar items
+app.get('/api/checklists/:id/items', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: items, error } = await supabase
+      .from('checklist_items')
+      .select('*, usuarios(nombre)')
+      .eq('checklist_id', req.params.id)
+      .order('orden', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(items.map(i => ({
+      id: i.id,
+      titulo: i.titulo,
+      descripcion: i.descripcion,
+      responsable_nombre: i.usuarios?.nombre,
+      completado: i.completado,
+      fecha_completado: i.fecha_completado,
+      orden: i.orden
+    })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. PUT /api/checklists/:id/items/:item_id - Actualizar item
+app.put('/api/checklists/:id/items/:item_id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { completado, responsable_id, descripcion } = req.body;
+
+    const updateData = {
+      ...(completado !== undefined && { completado }),
+      ...(responsable_id && { responsable_id }),
+      ...(descripcion && { descripcion })
+    };
+
+    if (completado === true) {
+      updateData.fecha_completado = new Date().toISOString();
+    } else if (completado === false) {
+      updateData.fecha_completado = null;
+    }
+
+    const { error } = await supabase
+      .from('checklist_items')
+      .update(updateData)
+      .eq('id', req.params.item_id);
+
+    if (error) throw error;
+
+    await recalcularProgresoChecklist(req.params.id);
+
+    registrarAuditoria(req.usuarioId, 'actualizar_item_checklist', `Item ${req.params.item_id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. DELETE /api/checklists/:id/items/:item_id - Eliminar item
+app.delete('/api/checklists/:id/items/:item_id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('checklist_items')
+      .delete()
+      .eq('id', req.params.item_id);
+
+    if (error) throw error;
+
+    await recalcularProgresoChecklist(req.params.id);
+
+    registrarAuditoria(req.usuarioId, 'eliminar_item_checklist', `Item ${req.params.item_id}`);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 10. POST /api/checklist-templates - Crear template
+app.post('/api/checklist-templates', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { nombre, descripcion, recurrencia } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+
+    const { data: template, error } = await supabase
+      .from('checklist_templates')
+      .insert({
+        nombre,
+        descripcion: descripcion || '',
+        recurrencia: recurrencia || 'manual',
+        comite_id: req.comiteId,
+        creador_id: req.usuarioId
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    registrarAuditoria(req.usuarioId, 'crear_template_checklist', `Template: ${nombre}`);
+    res.json({ success: true, id: template.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 11. GET /api/checklist-templates - Listar templates
+app.get('/api/checklist-templates', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { data: templates, error } = await supabase
+      .from('checklist_templates')
+      .select('*')
+      .eq('comite_id', req.comiteId)
+      .order('fecha_creacion', { ascending: false });
+
+    if (error) throw error;
+
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 12. POST /api/checklists/from-template/:template_id - Crear desde template
+app.post('/api/checklists/from-template/:template_id', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { nombre, fecha_vencimiento } = req.body;
+
+    // Obtener template
+    const { data: template, error: templateError } = await supabase
+      .from('checklist_templates')
+      .select('*')
+      .eq('id', req.params.template_id)
+      .eq('comite_id', req.comiteId)
+      .single();
+
+    if (templateError) throw templateError;
+
+    // Crear checklist
+    const { data: checklist, error: checklistError } = await supabase
+      .from('checklists')
+      .insert({
+        nombre: nombre || template.nombre,
+        descripcion: template.descripcion,
+        fecha_vencimiento,
+        comite_id: req.comiteId,
+        creador_id: req.usuarioId,
+        estado: 'pendiente',
+        progreso: 0,
+        template_id: req.params.template_id
+      })
+      .select()
+      .single();
+
+    if (checklistError) throw checklistError;
+
+    // Copiar items del template
+    const { data: templateItems } = await supabase
+      .from('checklist_template_items')
+      .select('*')
+      .eq('template_id', req.params.template_id);
+
+    if (templateItems && templateItems.length > 0) {
+      const itemsToInsert = templateItems.map(ti => ({
+        checklist_id: checklist.id,
+        titulo: ti.titulo,
+        descripcion: ti.descripcion,
+        orden: ti.orden,
+        completado: false
+      }));
+
+      await supabase.from('checklist_items').insert(itemsToInsert);
+    }
+
+    registrarAuditoria(req.usuarioId, 'crear_checklist_desde_template', `Template: ${template.nombre}`);
+    res.json({ success: true, id: checklist.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== HEALTH ==========
 
 app.get('/api/health', (req, res) => {
