@@ -1307,7 +1307,7 @@ app.post('/api/checklists', verificarToken, verificarComite, async (req, res) =>
         descripcion: descripcion || '',
         fecha_vencimiento,
         comite_id: req.comiteId,
-        creador_id: req.usuarioId,
+        usuario_creador_id: req.usuarioId,
         estado: 'pendiente',
         progreso: 0
       })
@@ -1616,7 +1616,7 @@ app.post('/api/checklists/from-template/:template_id', verificarToken, verificar
         descripcion: template.descripcion,
         fecha_vencimiento,
         comite_id: req.comiteId,
-        creador_id: req.usuarioId,
+        usuario_creador_id: req.usuarioId,
         estado: 'pendiente',
         progreso: 0,
         template_id: req.params.template_id
