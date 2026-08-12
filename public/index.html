@@ -174,6 +174,7 @@
         <button onclick="switchTab('votaciones')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🗳️ Votaciones</button>
         <button onclick="switchTab('documentos')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📄 Documentos</button>
         <button onclick="switchTab('proyectos')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">🏗️ Proyectos</button>
+        <button onclick="switchTab('checklists')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">✅ Checklists</button>
         <button onclick="switchTab('auditoria')" class="tab-btn px-4 py-2 font-bold text-gray-600 hover:text-purple-600">📊 Auditoría</button>
       </div>
 
@@ -1084,6 +1085,105 @@
         </div>
       </div>
 
+      <!-- CHECKLISTS TAB -->
+      <div id="tab-checklists" class="tab-content hidden">
+        <div class="mb-6 flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-gray-900">✅ Checklists</h2>
+          <div class="flex gap-2">
+            <button onclick="showCrearChecklistForm()" class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Nuevo Checklist</button>
+            <button onclick="mostrarTemplates()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">📋 Usar Template</button>
+          </div>
+        </div>
+
+        <!-- Formulario Crear Checklist -->
+        <div id="crear-checklist-form" class="hidden bg-white p-6 rounded-lg shadow mb-8 border border-gray-200">
+          <h3 class="text-lg font-bold mb-4">Crear Checklist</h3>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+            <input type="text" id="checklist-nombre" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Revisión Mensual">
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+            <textarea id="checklist-descripcion" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-16" placeholder="Detalles"></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Vencimiento</label>
+            <input type="date" id="checklist-fecha" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+          </div>
+
+          <div class="flex space-x-4">
+            <button onclick="crearChecklist()" class="flex-1 px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Crear</button>
+            <button onclick="hideCrearChecklistForm()" class="flex-1 px-6 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Lista de Checklists -->
+        <div class="space-y-4" id="checklists-lista">
+          <p class="text-center text-gray-500">Cargando checklists...</p>
+        </div>
+      </div>
+
+      <!-- MODAL: Templates -->
+      <div id="templates-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-900">Templates Disponibles</h2>
+            <button onclick="cerrarTemplatesModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <div id="templates-lista" class="space-y-2">
+            <!-- Se llena dinámicamente -->
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Detalle del Checklist -->
+      <div id="checklist-detalle-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="checklist-modal-nombre" class="text-2xl font-bold text-gray-900"></h2>
+            <button onclick="cerrarChecklistModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between mb-2">
+              <span class="font-semibold text-gray-900">Progreso</span>
+              <span id="checklist-modal-progreso" class="font-bold text-purple-600">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div id="checklist-modal-progreso-bar" class="bg-purple-600 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Items del Checklist -->
+          <div class="mb-4">
+            <h3 class="font-bold text-gray-900 mb-3">Items</h3>
+            <div id="checklist-items-lista" class="space-y-2">
+              <!-- Se llena dinámicamente -->
+            </div>
+          </div>
+
+          <!-- Agregar Item -->
+          <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <input type="text" id="item-titulo" class="px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título del item">
+              <select id="item-responsable" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Sin asignar</option>
+              </select>
+            </div>
+            <button onclick="agregarItem()" class="w-full px-3 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm hover:bg-blue-700">➕ Agregar Item</button>
+          </div>
+
+          <div class="flex gap-2">
+            <button onclick="completarChecklist()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">✓ Marcar Completo</button>
+            <button onclick="cerrarChecklistModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- AUDITORIA -->
       <div id="tab-auditoria" class="tab-content hidden">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Bitácora de Actividades</h2>
@@ -1147,6 +1247,250 @@
       if (currentUser?.perfil === 'admin') loadAuditoria();
     }
 
+    // ========== CHECKLISTS ==========
+
+    let checklistActualId = null;
+
+    function showCrearChecklistForm() {
+      document.getElementById('crear-checklist-form').classList.remove('hidden');
+    }
+
+    function hideCrearChecklistForm() {
+      document.getElementById('crear-checklist-form').classList.add('hidden');
+      document.getElementById('checklist-nombre').value = '';
+      document.getElementById('checklist-descripcion').value = '';
+      document.getElementById('checklist-fecha').value = '';
+    }
+
+    async function crearChecklist() {
+      const nombre = document.getElementById('checklist-nombre').value.trim();
+      const descripcion = document.getElementById('checklist-descripcion').value.trim();
+      const fecha_vencimiento = document.getElementById('checklist-fecha').value;
+
+      if (!nombre) {
+        alert('Nombre requerido');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/checklists?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ nombre, descripcion, fecha_vencimiento })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          hideCrearChecklistForm();
+          loadChecklists();
+          alert('✅ Checklist creado');
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al crear checklist');
+      }
+    }
+
+    async function loadChecklists() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/checklists?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const checklists = await response.json();
+
+        document.getElementById('checklists-lista').innerHTML = checklists.map(c => {
+          const estadoColor = c.estado === 'completado' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200';
+          const estadoIcon = c.estado === 'completado' ? '✅' : '⏳';
+
+          return `
+            <div class="p-4 rounded-lg border ${estadoColor} cursor-pointer hover:shadow-lg transition" onclick="abrirChecklistModal(${c.id})">
+              <div class="flex justify-between items-start mb-2">
+                <h3 class="font-bold text-gray-900">${estadoIcon} ${c.nombre}</h3>
+                <span class="text-sm font-semibold text-gray-600">${c.progreso || 0}%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 mb-3">
+                <div class="bg-purple-600 h-2 rounded-full" style="width: ${c.progreso || 0}%"></div>
+              </div>
+              <div class="text-sm text-gray-600">
+                <p>Items: ${c.completados_count || 0}/${c.responsables_count || 0}</p>
+                ${c.fecha_vencimiento ? `<p>Vencimiento: ${new Date(c.fecha_vencimiento).toLocaleDateString('es-CL')}</p>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function abrirChecklistModal(checklistId) {
+      try {
+        checklistActualId = checklistId;
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/checklists/${checklistId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const c = await response.json();
+
+        document.getElementById('checklist-modal-nombre').textContent = c.nombre;
+        document.getElementById('checklist-modal-progreso').textContent = `${c.progreso || 0}%`;
+        document.getElementById('checklist-modal-progreso-bar').style.width = `${c.progreso || 0}%`;
+
+        document.getElementById('checklist-items-lista').innerHTML = (c.items || []).map(i => `
+          <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+            <input type="checkbox" ${i.completado ? 'checked' : ''} onchange="toggleItem(${i.id}, this.checked)" class="w-5 h-5">
+            <div class="flex-1">
+              <p class="font-medium text-gray-900">${i.titulo}</p>
+              <p class="text-xs text-gray-600">${i.responsable_nombre || 'Sin asignar'}</p>
+            </div>
+            <button onclick="eliminarItem(${i.id})" class="text-red-600 hover:text-red-800 text-sm">✕</button>
+          </div>
+        `).join('');
+
+        const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+        const responsableSelect = document.getElementById('item-responsable');
+        responsableSelect.innerHTML = '<option value="">Sin asignar</option>';
+        usuarios.forEach(u => {
+          const option = document.createElement('option');
+          option.value = u.id;
+          option.textContent = u.nombre;
+          responsableSelect.appendChild(option);
+        });
+
+        document.getElementById('checklist-detalle-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function agregarItem() {
+      const titulo = document.getElementById('item-titulo').value.trim();
+      const responsable_id = document.getElementById('item-responsable').value;
+
+      if (!titulo) {
+        alert('Título requerido');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/checklists/${checklistActualId}/items?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ titulo, responsable_id: responsable_id || null })
+        });
+
+        document.getElementById('item-titulo').value = '';
+        document.getElementById('item-responsable').value = '';
+        await abrirChecklistModal(checklistActualId);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function toggleItem(itemId, completado) {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/checklists/${checklistActualId}/items/${itemId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ completado })
+        });
+        await abrirChecklistModal(checklistActualId);
+        await loadChecklists();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function eliminarItem(itemId) {
+      if (!confirm('¿Eliminar item?')) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/checklists/${checklistActualId}/items/${itemId}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        await abrirChecklistModal(checklistActualId);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function completarChecklist() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/checklists/${checklistActualId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ estado: 'completado' })
+        });
+        cerrarChecklistModal();
+        loadChecklists();
+        alert('✅ Checklist marcado como completado');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function mostrarTemplates() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/checklist-templates?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const templates = await response.json();
+
+        document.getElementById('templates-lista').innerHTML = templates.map(t => `
+          <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <p class="font-bold text-gray-900">${t.nombre}</p>
+                <p class="text-xs text-gray-600">${t.descripcion || ''}</p>
+              </div>
+              <button onclick="usarTemplate(${t.id})" class="px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Usar</button>
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('templates-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function usarTemplate(templateId) {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/checklists/from-template/${templateId}?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({})
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          cerrarTemplatesModal();
+          loadChecklists();
+          alert('✅ Checklist creado desde template');
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function cerrarChecklistModal() {
+      document.getElementById('checklist-detalle-modal').classList.add('hidden');
+      checklistActualId = null;
+    }
+
+    function cerrarTemplatesModal() {
+      document.getElementById('templates-modal').classList.add('hidden');
+    }
+
     function showDashboard() {
       setVisibility({ landing: false, loginPage: false, registerPage: false, dashboard: true });
       document.getElementById('user-info').textContent = `${currentUser.nombre} (${currentUser.perfil})`;
@@ -1155,6 +1499,7 @@
       loadVotaciones();
       loadDocumentos();
       loadProyectos();
+      loadChecklists();
       if (currentUser.perfil === 'admin') loadAuditoria();
     }
 
