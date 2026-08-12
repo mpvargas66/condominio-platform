@@ -13,76 +13,411 @@
 <body class="bg-gray-50" id="app">
 
   <!-- LANDING -->
-  <div id="landing" class="min-h-screen">
-    <nav class="bg-white shadow-sm">
+  <div id="landing" class="min-h-screen bg-white">
+    <style>
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes slideInLeft {
+        from {
+          opacity: 0;
+          transform: translateX(-30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes slideInRight {
+        from {
+          opacity: 0;
+          transform: translateX(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes pulse-subtle {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
+      .animate-fade-in-up {
+        animation: fadeInUp 0.8s ease-out forwards;
+      }
+
+      .animate-slide-in-left {
+        animation: slideInLeft 0.8s ease-out forwards;
+      }
+
+      .animate-slide-in-right {
+        animation: slideInRight 0.8s ease-out forwards;
+      }
+
+      .animate-pulse-subtle {
+        animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      .hero-gradient {
+        background: linear-gradient(135deg, #6B21A8 0%, #7C3AED 100%);
+      }
+
+      .card-lift {
+        transition: all 0.3s ease;
+      }
+
+      .card-lift:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(107, 33, 168, 0.15);
+      }
+
+      .btn-hover {
+        transition: all 0.3s ease;
+      }
+
+      .btn-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(107, 33, 168, 0.3);
+      }
+
+      .section-appear {
+        opacity: 0;
+        animation: fadeInUp 0.8s ease-out forwards;
+      }
+
+      .step-number {
+        width: 60px;
+        height: 60px;
+        background: #6B21A8;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+      }
+    </style>
+
+    <!-- NAVBAR -->
+    <nav class="fixed w-full bg-white shadow-md z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div class="flex items-center space-x-2">
           <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">C</div>
           <span class="text-xl font-bold text-gray-900">Comunité</span>
         </div>
-        <div class="flex space-x-4">
-          <button onclick="showLogin()" class="px-4 py-2 text-purple-600 font-medium hover:bg-purple-50 rounded-lg">Ingresar</button>
-          <button onclick="showRegister()" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700">Registrarse</button>
+        <div class="hidden md:flex space-x-8">
+          <a href="#" class="text-gray-700 hover:text-purple-600 font-medium transition">Inicio</a>
+          <a href="#features" class="text-gray-700 hover:text-purple-600 font-medium transition">Características</a>
+          <a href="#howworks" class="text-gray-700 hover:text-purple-600 font-medium transition">Cómo funciona</a>
+          <a href="#pricing" class="text-gray-700 hover:text-purple-600 font-medium transition">Precios</a>
+        </div>
+        <div class="flex space-x-3">
+          <button onclick="showLogin()" class="px-4 py-2 text-purple-600 font-medium hover:bg-purple-50 rounded-lg transition">Ingresar</button>
+          <button onclick="showRegister()" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition btn-hover">Comenzar</button>
         </div>
       </div>
     </nav>
 
-    <div class="hero-bg text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div class="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h1 class="text-5xl font-bold mb-4">Gobernanza Digital para Condominios</h1>
-            <p class="text-xl text-purple-100 mb-8">Gestiona actas, votaciones, usuarios y documentos de forma segura, transparente y legal.</p>
-            <div class="flex space-x-4">
-              <button onclick="showRegister()" class="px-8 py-3 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100">Comenzar gratis</button>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
-              <div class="text-4xl mb-2">📋</div>
-              <h3 class="font-bold mb-2">Actas</h3>
-              <p class="text-sm text-purple-100">Redacción y firmas digitales</p>
-            </div>
-            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
-              <div class="text-4xl mb-2">🗳️</div>
-              <h3 class="font-bold mb-2">Votaciones</h3>
-              <p class="text-sm text-purple-100">Registro legal de hora y usuario</p>
-            </div>
-            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
-              <div class="text-4xl mb-2">👥</div>
-              <h3 class="font-bold mb-2">Usuarios</h3>
-              <p class="text-sm text-purple-100">Perfiles diferenciados</p>
-            </div>
-            <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-blur">
-              <div class="text-4xl mb-2">📊</div>
-              <h3 class="font-bold mb-2">Reportes</h3>
-              <p class="text-sm text-purple-100">Informes automáticos</p>
-            </div>
-          </div>
-        </div>
+    <!-- HERO SECTION -->
+    <section class="hero-gradient text-white pt-32 pb-20 px-4">
+      <div class="max-w-7xl mx-auto text-center">
+        <h1 class="text-5xl md:text-6xl font-bold mb-6 animate-fade-in-up">
+          Gobernanza Digital para tu Condominio
+        </h1>
+        <p class="text-xl md:text-2xl text-purple-100 mb-10 max-w-3xl mx-auto animate-fade-in-up" style="animation-delay: 0.2s">
+          Actas, votaciones, documentos, proyectos y checklists - todo en un solo lugar, seguro y legal
+        </p>
+        <button onclick="showRegister()" class="px-10 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition btn-hover animate-fade-in-up text-lg" style="animation-delay: 0.4s">
+          Comenzar Gratis
+        </button>
+        <p class="text-purple-200 mt-4 text-sm">✓ Sin tarjeta de crédito • ✓ Acceso completo • ✓ Soporte 24/7</p>
       </div>
-    </div>
+    </section>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <h2 class="text-3xl font-bold text-center mb-12">¿Por qué Comunité?</h2>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
-          <div class="text-4xl mb-4">🔒</div>
-          <h3 class="text-lg font-bold mb-2">Seguridad</h3>
-          <p class="text-gray-600">Autenticación JWT, encriptación de datos, bitácora completa.</p>
-        </div>
-        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
-          <div class="text-4xl mb-4">⚖️</div>
-          <h3 class="text-lg font-bold mb-2">Cumplimiento Legal</h3>
-          <p class="text-gray-600">Timestamps verificables, registros íntegros, documentos protocalizados.</p>
-        </div>
-        <div class="card-hover bg-white p-8 rounded-lg shadow-sm border border-gray-100">
-          <div class="text-4xl mb-4">📱</div>
-          <h3 class="text-lg font-bold mb-2">Acceso Flexible</h3>
-          <p class="text-gray-600">Responsive, accesible desde cualquier dispositivo.</p>
+    <!-- FEATURES SECTION -->
+    <section id="features" class="py-20 bg-gray-50 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-4xl font-bold text-center mb-4">Todas las herramientas que necesitas</h2>
+        <p class="text-center text-gray-600 mb-16 max-w-2xl mx-auto">
+          Una plataforma completa para gestionar cada aspecto de tu condominio
+        </p>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear">
+            <div class="text-5xl mb-4">📋</div>
+            <h3 class="text-xl font-bold mb-3">Actas Digitales</h3>
+            <p class="text-gray-600">Redacta, firma digitalmente y almacena todas tus actas de manera segura y legal</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.1s">
+            <div class="text-5xl mb-4">🗳️</div>
+            <h3 class="text-xl font-bold mb-3">Votaciones Seguras</h3>
+            <p class="text-gray-600">Sistema legal de votaciones con registro de hora, usuario y resultados verificables</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.2s">
+            <div class="text-5xl mb-4">📄</div>
+            <h3 class="text-xl font-bold mb-3">Gestión Documental</h3>
+            <p class="text-gray-600">Organiza, comparte y accede a todos tus documentos desde cualquier dispositivo</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.3s">
+            <div class="text-5xl mb-4">🏗️</div>
+            <h3 class="text-xl font-bold mb-3">Proyectos</h3>
+            <p class="text-gray-600">Planifica, ejecuta y supervisa proyectos comunitarios con Kanban, presupuesto y gastos</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.4s">
+            <div class="text-5xl mb-4">✅</div>
+            <h3 class="text-xl font-bold mb-3">Checklists</h3>
+            <p class="text-gray-600">Crea listas de tareas colaborativas con templates reutilizables y seguimiento automático</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.5s">
+            <div class="text-5xl mb-4">📊</div>
+            <h3 class="text-xl font-bold mb-3">Reportes</h3>
+            <p class="text-gray-600">Genera reportes automáticos y auditoría completa de todas las actividades</p>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- HOW IT WORKS SECTION -->
+    <section id="howworks" class="py-20 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-4xl font-bold text-center mb-4">Cómo funciona</h2>
+        <p class="text-center text-gray-600 mb-16 max-w-2xl mx-auto">
+          En 4 pasos simples puedes tener tu condominio completamente digitalizado
+        </p>
+
+        <div class="grid md:grid-cols-4 gap-8">
+          <div class="text-center section-appear">
+            <div class="step-number mx-auto mb-4">1</div>
+            <h3 class="text-xl font-bold mb-2">Crear Comité</h3>
+            <p class="text-gray-600">Registra tu condominio y configura básicos</p>
+          </div>
+
+          <div class="hidden md:block text-center text-4xl text-purple-300 pt-8">→</div>
+
+          <div class="text-center section-appear" style="animation-delay: 0.1s">
+            <div class="step-number mx-auto mb-4">2</div>
+            <h3 class="text-xl font-bold mb-2">Invitar Miembros</h3>
+            <p class="text-gray-600">Añade a copropietarios y administradores</p>
+          </div>
+
+          <div class="hidden md:block text-center text-4xl text-purple-300 pt-8">→</div>
+
+          <div class="text-center section-appear" style="animation-delay: 0.2s">
+            <div class="step-number mx-auto mb-4">3</div>
+            <h3 class="text-xl font-bold mb-2">Registrar Actividades</h3>
+            <p class="text-gray-600">Crea actas, votaciones y documentos</p>
+          </div>
+
+          <div class="hidden md:block text-center text-4xl text-purple-300 pt-8">→</div>
+
+          <div class="text-center section-appear" style="animation-delay: 0.3s">
+            <div class="step-number mx-auto mb-4">4</div>
+            <h3 class="text-xl font-bold mb-2">Colaborar</h3>
+            <p class="text-gray-600">Gestiona todo transparentemente</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTIMONIALS SECTION -->
+    <section class="py-20 bg-gray-50 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-4xl font-bold text-center mb-4">Lo que dicen nuestros usuarios</h2>
+        <p class="text-center text-gray-600 mb-16">Comunidades reales que confían en Comunité</p>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-purple-200 rounded-full mr-4 flex items-center justify-center text-2xl">👨‍💼</div>
+              <div>
+                <p class="font-bold">Carlos Mendoza</p>
+                <p class="text-sm text-gray-600">Presidente - Torres del Parque</p>
+              </div>
+            </div>
+            <p class="text-yellow-400 mb-3">⭐⭐⭐⭐⭐</p>
+            <p class="text-gray-700">"Comunité cambió la forma en que manejamos nuestro condominio. Las actas y votaciones son mucho más ordenadas."</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.1s">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-blue-200 rounded-full mr-4 flex items-center justify-center text-2xl">👩‍💼</div>
+              <div>
+                <p class="font-bold">María Rodríguez</p>
+                <p class="text-sm text-gray-600">Administradora - Residencial las Flores</p>
+              </div>
+            </div>
+            <p class="text-yellow-400 mb-3">⭐⭐⭐⭐⭐</p>
+            <p class="text-gray-700">"Ahorro tiempo administrativo y tengo todo documentado legalmente. Imprescindible para cualquier condominio."</p>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.2s">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-green-200 rounded-full mr-4 flex items-center justify-center text-2xl">👨‍⚖️</div>
+              <div>
+                <p class="font-bold">Roberto Jiménez</p>
+                <p class="text-sm text-gray-600">Copropietario - Condominio San Martín</p>
+              </div>
+            </div>
+            <p class="text-yellow-400 mb-3">⭐⭐⭐⭐⭐</p>
+            <p class="text-gray-700">"Transparencia total en todo. Participo en votaciones desde mi celular y siempre sé qué está pasando."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING SECTION -->
+    <section id="pricing" class="py-20 px-4">
+      <div class="max-w-7xl mx-auto">
+        <h2 class="text-4xl font-bold text-center mb-4">Planes simples y transparentes</h2>
+        <p class="text-center text-gray-600 mb-16">Elige el plan perfecto para tu condominio</p>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear">
+            <h3 class="text-2xl font-bold mb-2">Básico</h3>
+            <p class="text-gray-600 mb-6">Para condominios pequeños</p>
+            <p class="text-4xl font-bold mb-6">Gratis</p>
+            <button onclick="showRegister()" class="w-full px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition mb-8">Comenzar</button>
+            <ul class="space-y-3 text-gray-700">
+              <li>✓ Hasta 50 unidades</li>
+              <li>✓ Actas básicas</li>
+              <li>✓ Votaciones</li>
+              <li>✓ Documentos</li>
+              <li>✗ Proyectos</li>
+              <li>✗ Checklists</li>
+            </ul>
+          </div>
+
+          <div class="card-lift bg-gradient-to-b from-purple-50 to-white p-8 rounded-xl border-2 border-purple-600 section-appear relative" style="animation-delay: 0.1s">
+            <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold">POPULAR</div>
+            <h3 class="text-2xl font-bold mb-2">Profesional</h3>
+            <p class="text-gray-600 mb-6">Para la mayoría de condominios</p>
+            <p class="text-4xl font-bold mb-2">$9.99<span class="text-lg text-gray-600">/mes</span></p>
+            <p class="text-sm text-gray-600 mb-6">o $99.99/año (ahorra 17%)</p>
+            <button onclick="showRegister()" class="w-full px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition mb-8 btn-hover">Comenzar gratis</button>
+            <ul class="space-y-3 text-gray-700">
+              <li>✓ Hasta 200 unidades</li>
+              <li>✓ Todo de Básico +</li>
+              <li>✓ Proyectos completos</li>
+              <li>✓ Checklists</li>
+              <li>✓ Reportes</li>
+              <li>✓ Soporte por email</li>
+            </ul>
+          </div>
+
+          <div class="card-lift bg-white p-8 rounded-xl border border-gray-200 section-appear" style="animation-delay: 0.2s">
+            <h3 class="text-2xl font-bold mb-2">Empresarial</h3>
+            <p class="text-gray-600 mb-6">Para grandes complejos</p>
+            <p class="text-4xl font-bold mb-6">Contactar</p>
+            <button onclick="showLogin()" class="w-full px-6 py-3 bg-gray-200 text-gray-900 font-bold rounded-lg hover:bg-gray-300 transition mb-8">Solicitar demo</button>
+            <ul class="space-y-3 text-gray-700">
+              <li>✓ Unidades ilimitadas</li>
+              <li>✓ Todo de Profesional +</li>
+              <li>✓ API personalizada</li>
+              <li>✓ Integraciones custom</li>
+              <li>✓ Soporte 24/7</li>
+              <li>✓ SLA garantizado</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIDEO DEMO SECTION -->
+    <section class="py-20 bg-gray-50 px-4">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-4xl font-bold mb-4">Ve cómo funciona Comunité</h2>
+        <p class="text-gray-600 mb-12">Un recorrido rápido por todas las funcionalidades</p>
+
+        <div class="relative bg-black rounded-xl overflow-hidden shadow-2xl">
+          <div class="aspect-video bg-gray-900 flex items-center justify-center">
+            <div class="text-center">
+              <div class="text-6xl mb-4">▶️</div>
+              <p class="text-white text-lg">Video demo de Comunité</p>
+              <p class="text-gray-400 text-sm mt-2">[Video placeholder]</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA SECTION -->
+    <section class="hero-gradient text-white py-20 px-4">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-6">¿Listo para transformar tu condominio?</h2>
+        <p class="text-xl text-purple-100 mb-10">Únete a cientos de condominios que ya confían en Comunité</p>
+        <button onclick="showRegister()" class="px-10 py-4 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition btn-hover text-lg animate-pulse-subtle">
+          Comenzar Gratis Ahora
+        </button>
+        <p class="text-purple-200 mt-6">✓ 14 días de acceso completo • ✓ Sin compromiso • ✓ Cancela cuando quieras</p>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 text-gray-400 py-16 px-4">
+      <div class="max-w-7xl mx-auto">
+        <div class="grid md:grid-cols-4 gap-12 mb-12">
+          <div>
+            <div class="flex items-center space-x-2 mb-4">
+              <div class="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">C</div>
+              <span class="text-white font-bold">Comunité</span>
+            </div>
+            <p class="text-sm">La solución digital para gobernanza de condominios</p>
+          </div>
+
+          <div>
+            <h4 class="text-white font-bold mb-4">Producto</h4>
+            <ul class="space-y-2 text-sm">
+              <li><a href="#" class="hover:text-white transition">Características</a></li>
+              <li><a href="#" class="hover:text-white transition">Precios</a></li>
+              <li><a href="#" class="hover:text-white transition">Seguridad</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 class="text-white font-bold mb-4">Empresa</h4>
+            <ul class="space-y-2 text-sm">
+              <li><a href="#" class="hover:text-white transition">Sobre nosotros</a></li>
+              <li><a href="#" class="hover:text-white transition">Blog</a></li>
+              <li><a href="#" class="hover:text-white transition">Contacto</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 class="text-white font-bold mb-4">Legal</h4>
+            <ul class="space-y-2 text-sm">
+              <li><a href="#" class="hover:text-white transition">Privacidad</a></li>
+              <li><a href="#" class="hover:text-white transition">Términos</a></li>
+              <li><a href="mailto:hola@comunite.app" class="hover:text-white transition">Email</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-8 text-center text-sm">
+          <p>&copy; 2024 Comunité. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <!-- LOGIN -->
