@@ -159,6 +159,14 @@
       </div>
     </nav>
 
+    <!-- Selector de Comité -->
+    <div class="bg-purple-100 border-b border-purple-300 px-6 py-3">
+      <label class="block text-sm font-semibold text-gray-900 mb-2">Comité Actual:</label>
+      <select id="select-comite" onchange="cambiarComite()" class="w-full px-4 py-2 border border-purple-400 rounded-lg font-semibold text-gray-900 bg-white">
+        <!-- Se llena dinámicamente -->
+      </select>
+    </div>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="flex space-x-4 mb-8 border-b border-gray-200">
         <button onclick="switchTab('usuarios')" class="tab-btn active px-4 py-2 font-bold text-purple-600 border-b-2 border-purple-600">👥 Usuarios</button>
@@ -743,6 +751,30 @@
       setVisibility({ landing: false, loginPage: false, registerPage: true, dashboard: false });
     }
 
+    function rellenarSelectorComites() {
+      const comites = JSON.parse(localStorage.getItem('comites') || '[]');
+      const comiteSeleccionado = localStorage.getItem('comiteSeleccionado');
+
+      const select = document.getElementById('select-comite');
+      if (!select) return;
+
+      select.innerHTML = comites.map(c => `
+        <option value="${c.id}" ${c.id == comiteSeleccionado ? 'selected' : ''}>
+          ${c.nombre} (${c.rol})
+        </option>
+      `).join('');
+    }
+
+    function cambiarComite() {
+      const comiteId = document.getElementById('select-comite').value;
+      localStorage.setItem('comiteSeleccionado', comiteId);
+
+      loadUsuarios();
+      loadActas();
+      loadVotaciones();
+      if (currentUser?.perfil === 'admin') loadAuditoria();
+    }
+
     function showDashboard() {
       setVisibility({ landing: false, loginPage: false, registerPage: false, dashboard: true });
       document.getElementById('user-info').textContent = `${currentUser.nombre} (${currentUser.perfil})`;
@@ -787,8 +819,12 @@
         if (data.success) {
           token = data.token;
           currentUser = data.usuario;
+          const comites = data.usuario.comites || [];
           localStorage.setItem('token', token);
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          localStorage.setItem('comites', JSON.stringify(comites));
+          localStorage.setItem('comiteSeleccionado', comites[0]?.id || null);
+          rellenarSelectorComites();
           showDashboard();
         } else {
           showError('login-error', data.error);
@@ -935,7 +971,8 @@
 
     async function loadActas() {
       try {
-        const response = await fetch(`${API_BASE}/api/actas`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas?comite_id=${comiteId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const actas = await response.json();
@@ -1546,10 +1583,11 @@
         console.log('📤 Enviando POST a /api/votaciones...');
         console.log('Body:', { titulo, descripcion, tipo, opciones });
 
+        const comiteId = localStorage.getItem('comiteSeleccionado');
         const response = await fetch(`${API_BASE}/api/votaciones`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ titulo, descripcion, tipo, opciones })
+          body: JSON.stringify({ titulo, descripcion, tipo, opciones, comite_id: comiteId })
         });
 
         console.log('📡 Response status:', response.status);
@@ -1606,7 +1644,8 @@
         console.log('API_BASE:', API_BASE);
         console.log('Token:', token?.substring(0, 20) + '...');
 
-        const response = await fetch(`${API_BASE}/api/votaciones`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/votaciones?comite_id=${comiteId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
