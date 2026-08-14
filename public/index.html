@@ -2409,6 +2409,7 @@
 
     async function actualizarTema(temaId, campo, valor) {
       try {
+        console.log('📝 actualizarTema:', { temaId, campo, valor, actaActualId });
         const comiteId = localStorage.getItem('comiteSeleccionado');
         const response = await fetch(`${API_BASE}/api/actas/${actaActualId}/temas/${temaId}?comite_id=${comiteId}`, {
           method: 'PUT',
@@ -2416,14 +2417,18 @@
           body: JSON.stringify({ [campo]: valor })
         });
 
+        const data = await response.json();
+        console.log('📝 Response:', { status: response.status, ok: response.ok, data });
+
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Error updating tema');
+          throw new Error(data.error || 'Error updating tema');
         }
 
+        console.log('🔄 Reloading modal for acta:', actaActualId);
         await abrirActaModal(actaActualId);
+        console.log('✅ Modal reloaded');
       } catch (error) {
-        console.error('Error actualizando tema:', error);
+        console.error('❌ Error actualizando tema:', error);
         alert('Error: ' + error.message);
       }
     }
