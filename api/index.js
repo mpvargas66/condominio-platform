@@ -207,7 +207,13 @@ app.delete('/api/usuarios/:id', verificarToken, async (req, res) => {
 // 1. POST /api/usuarios/:id/enviar-invitacion
 app.post('/api/usuarios/:id/enviar-invitacion', verificarToken, async (req, res) => {
   try {
+    console.log('🔍 DEBUG: Iniciando envío de invitación');
+    console.log('🔍 DEBUG: RESEND_API_KEY existe?', !!process.env.RESEND_API_KEY);
+    console.log('🔍 DEBUG: APP_URL:', process.env.APP_URL);
+    console.log('🔍 DEBUG: usuarioId:', req.params.id);
+
     if (req.usuarioPerfil !== 'admin') {
+      console.log('🔍 DEBUG: No es admin');
       return res.status(403).json({ error: 'Solo admins pueden enviar invitaciones' });
     }
 
@@ -217,13 +223,18 @@ app.post('/api/usuarios/:id/enviar-invitacion', verificarToken, async (req, res)
       .eq('id', req.params.id)
       .single();
 
+    console.log('🔍 DEBUG: Usuario encontrado?', !!usuario, usuario?.email);
+
     if (userError || !usuario) {
+      console.log('🔍 DEBUG: Error obtener usuario:', userError);
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     // Generar token único
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
+
+    console.log('🔍 DEBUG: Token generado, guardando en password_resets...');
 
     // Guardar token en password_resets
     const { error: tokenError } = await supabase
@@ -237,8 +248,11 @@ app.post('/api/usuarios/:id/enviar-invitacion', verificarToken, async (req, res)
 
     if (tokenError) throw tokenError;
 
+    console.log('🔍 DEBUG: Token guardado, enviando email con Resend...');
+
     // Enviar email con Resend
     const setPasswordUrl = `${process.env.APP_URL || 'https://comunite.vercel.app'}/set-password?token=${token}`;
+    console.log('🔍 DEBUG: URL:', setPasswordUrl);
 
     await resend.emails.send({
       from: 'Comunité <noreply@comunite.app>',
@@ -273,6 +287,8 @@ app.post('/api/usuarios/:id/enviar-invitacion', verificarToken, async (req, res)
         </div>
       `
     });
+
+    console.log('🔍 DEBUG: Email enviado exitosamente a', usuario.email);
 
     registrarAuditoria(req.usuarioId, 'enviar_invitacion', `Invitación enviada a ${usuario.email}`);
     res.json({ success: true, email_enviado: true });
