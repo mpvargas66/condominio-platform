@@ -756,40 +756,6 @@
               </div>
             </div>
 
-            <!-- 📋 TEMAS / ORDEN DEL DÍA (solo Comité) -->
-            <div id="section-temas" class="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
-              <h4 class="font-bold text-lg mb-4">📋 Orden del Día / Temas</h4>
-
-              <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <label class="block text-sm font-bold text-gray-900 mb-2">Temas iniciales (uno por línea)</label>
-                <textarea id="acta-temas" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-24 text-sm" placeholder="Tema 1&#10;Tema 2&#10;Tema 3&#10;Tema 4"></textarea>
-                <p class="text-xs text-gray-600 mt-1">💡 Escribe los temas que se tratarán en la reunión, uno por línea</p>
-              </div>
-
-              <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
-                <h5 class="font-bold mb-4">Agregar Tema a Orden del Día</h5>
-                <div class="flex gap-2 mb-4">
-                  <input type="text" id="tema-titulo-nuevo" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Revisión de seguridad del edificio">
-                  <button type="button" onclick="agregarTituloTema()" class="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">+ Agregar</button>
-                </div>
-              </div>
-
-              <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead class="bg-gray-100 border-b">
-                    <tr>
-                      <th class="px-4 py-3 text-left font-bold">#</th>
-                      <th class="px-4 py-3 text-left font-bold">Título</th>
-                      <th class="px-4 py-3 text-center font-bold">Estado</th>
-                      <th class="px-4 py-3 text-center font-bold">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="temas-tbody" class="divide-y">
-                    <tr><td colspan="4" class="px-4 py-4 text-center text-gray-500 text-sm">Sin temas agregados</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
             <!-- MODAL: Editar Detalles de Tema -->
             <div id="tema-editor-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
