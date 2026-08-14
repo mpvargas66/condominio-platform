@@ -435,14 +435,14 @@ app.get('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
 // ACTUALIZADO: Agregar verificarComite y comite_id al insert
 app.post('/api/actas', verificarToken, verificarComite, async (req, res) => {
   try {
-    const { titulo, tipo, contenido, fecha_reunion, hora_inicio, hora_cierre, lugar } = req.body;
+    const { titulo, tipo, contenido, fecha_reunion, hora_inicio, hora_cierre, lugar, temas = [] } = req.body;
 
     if (!titulo) return res.status(400).json({ error: 'Título requerido' });
 
     const { data, error } = await supabase
       .from('actas')
       .insert({
-        comite_id: req.comiteId,  // NUEVO: agregar comite_id
+        comite_id: req.comiteId,
         titulo,
         tipo: tipo || 'comite',
         contenido: contenido || '',
@@ -458,8 +458,27 @@ app.post('/api/actas', verificarToken, verificarComite, async (req, res) => {
 
     if (error) throw error;
 
+    const actaId = data.id;
+
+    // Guardar temas iniciales
+    if (temas && temas.length > 0) {
+      const temasConNumero = temas.map((titulo, index) => ({
+        acta_id: actaId,
+        numero: index + 1,
+        titulo: titulo.trim(),
+        estado: 'pendiente',
+        comite_id: req.comiteId
+      }));
+
+      const { error: temasError } = await supabase
+        .from('temas_actas')
+        .insert(temasConNumero);
+
+      if (temasError) console.error('Error guardando temas:', temasError);
+    }
+
     registrarAuditoria(req.usuarioId, 'crear_acta', `Acta: ${titulo}`);
-    res.json({ success: true, id: data.id });
+    res.json({ success: true, id: actaId });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

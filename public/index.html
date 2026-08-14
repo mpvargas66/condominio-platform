@@ -760,6 +760,12 @@
             <div id="section-temas" class="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
               <h4 class="font-bold text-lg mb-4">📋 Orden del Día / Temas</h4>
 
+              <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Temas iniciales (uno por línea)</label>
+                <textarea id="acta-temas" class="w-full px-4 py-2 border border-gray-300 rounded-lg h-24 text-sm" placeholder="Tema 1&#10;Tema 2&#10;Tema 3&#10;Tema 4"></textarea>
+                <p class="text-xs text-gray-600 mt-1">💡 Escribe los temas que se tratarán en la reunión, uno por línea</p>
+              </div>
+
               <div class="mb-6 p-4 bg-white border border-gray-300 rounded-lg">
                 <h5 class="font-bold mb-4">Agregar Tema a Orden del Día</h5>
                 <div class="flex gap-2 mb-4">
@@ -1029,8 +1035,9 @@
           </div>
 
           <div class="flex gap-2 mt-6">
-            <button onclick="marcarActaCompletada()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">✅ Marcar Completada</button>
-            <button onclick="cerrarActaModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+            <button onclick="guardarActaEnRevision()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">💾 Guardar en Revisión</button>
+            <button onclick="marcarActaCompletada()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">✅ Completada</button>
+            <button onclick="cerrarActaModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">✕ Cerrar</button>
           </div>
         </div>
       </div>
@@ -2402,6 +2409,29 @@
       }
     }
 
+    async function guardarActaEnRevision() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ estado: 'en_revision' })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          loadActas();
+          alert('✅ Acta guardada en revisión');
+          cerrarActaModal();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar acta');
+      }
+    }
+
     async function marcarActaCompletada() {
       try {
         const comiteId = localStorage.getItem('comiteSeleccionado');
@@ -2531,6 +2561,13 @@
           return;
         }
 
+        // Extraer temas del textarea
+        const temasTexto = document.getElementById('acta-temas').value;
+        const temas = temasTexto
+          .split('\n')
+          .map(t => t.trim())
+          .filter(t => t.length > 0);
+
         let contenidoActa = `# ACTA ${tipo.toUpperCase()}\n\n`;
         contenidoActa += `**Fecha:** ${fecha_reunion}\n`;
         contenidoActa += `**Hora:** ${hora_inicio} - ${hora_cierre}\n`;
@@ -2551,7 +2588,8 @@
             hora_inicio,
             hora_cierre,
             lugar,
-            contenido: contenidoActa
+            contenido: contenidoActa,
+            temas: temas
           })
         });
 
