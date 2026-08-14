@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import crypto from 'crypto';
 import { Resend } from 'resend';
+import PDFDocument from 'pdfkit';
 import supabase from '../supabase-client.js';
 
 const app = express();
@@ -428,6 +429,79 @@ app.get('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
       firmas: firmas || []
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generar PDF de acta
+app.get('/api/actas/:id/pdf', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comiteId = req.query.comite_id;
+
+    if (!comiteId) {
+      return res.status(400).json({ error: 'comite_id requerido' });
+    }
+
+    const { data: acta, error: actaError } = await supabase
+      .from('actas')
+      .select('*, usuarios(nombre)')
+      .eq('id', id)
+      .eq('comite_id', comiteId)
+      .single();
+
+    if (actaError || !acta) {
+      return res.status(404).json({ error: 'Acta no encontrada' });
+    }
+
+    const { data: temas } = await supabase
+      .from('temas_actas')
+      .select('*')
+      .eq('acta_id', id)
+      .order('numero', { ascending: true });
+
+    const doc = new PDFDocument({ margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Acta-${acta.titulo.replace(/\s+/g, '-')}.pdf"`);
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').text('ACTA', { align: 'center' }).moveDown(0.2);
+    doc.fontSize(14).font('Helvetica').text(acta.titulo, { align: 'center' }).moveDown(1);
+
+    doc.fontSize(11).font('Helvetica-Bold').text('Información General:', { underline: true }).moveDown(0.3);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Tipo: ${acta.tipo === 'comite' ? 'Comité' : acta.tipo === 'asamblea_ordinaria' ? 'Asamblea Ordinaria' : 'Asamblea Extraordinaria'}`);
+    doc.text(`Fecha de reunión: ${new Date(acta.fecha_reunion).toLocaleDateString('es-CL')}`);
+    doc.text(`Hora: ${acta.hora_inicio} - ${acta.hora_cierre}`);
+    doc.text(`Lugar: ${acta.lugar}`);
+    doc.text(`Autor: ${acta.usuarios.nombre}`);
+    doc.text(`Estado: ${acta.estado === 'completado' ? '✓ Completada' : acta.estado === 'en_revision' ? '📋 En Revisión' : '⏳ Pendiente'}`);
+    doc.moveDown(1);
+
+    if (temas && temas.length > 0) {
+      doc.fontSize(11).font('Helvetica-Bold').text('Orden del Día:', { underline: true }).moveDown(0.3);
+
+      temas.forEach((tema, idx) => {
+        doc.fontSize(10).font('Helvetica-Bold').text(`${idx + 1}. ${tema.titulo}`, { continued: true });
+        doc.font('Helvetica').text(` [${tema.estado}]`).moveDown(0.2);
+
+        if (tema.observaciones) {
+          doc.fontSize(9).text(`Observaciones: ${tema.observaciones}`).moveDown(0.1);
+        }
+        if (tema.responsable) {
+          doc.text(`Responsable: ${tema.responsable}`).moveDown(0.1);
+        }
+
+        doc.moveDown(0.3);
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(9).text(`Generado el ${new Date().toLocaleDateString('es-CL')} por Comunité`, { align: 'center' });
+
+    doc.end();
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });

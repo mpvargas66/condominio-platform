@@ -968,6 +968,7 @@
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Tipo</th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Fecha</th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Estado</th>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">PDF</th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Acciones</th>
                 </tr>
               </thead>
@@ -2210,6 +2211,9 @@
                 </span>
               </td>
               <td class="px-6 py-4">
+                ${a.estado === 'completado' ? `<button onclick="descargarPDF(${a.id})" class="text-green-600 hover:text-green-800 font-medium text-sm flex items-center gap-1">📥 Descargar</button>` : '<span class="text-gray-400 text-sm">-</span>'}
+              </td>
+              <td class="px-6 py-4">
                 <button onclick="event.stopPropagation(); abrirActaModal(${a.id})" class="text-blue-600 hover:text-blue-800 font-medium text-sm mr-3">Editar</button>
                 ${puedoEliminar ? `<button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-red-600 hover:text-red-800 font-medium text-sm">Eliminar</button>` : ''}
               </td>
@@ -2291,6 +2295,23 @@
       } catch (error) {
         console.error(error);
         alert('Error al eliminar actas');
+      }
+    }
+
+    function descargarPDF(actaId) {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const url = `${API_BASE}/api/actas/${actaId}/pdf?comite_id=${comiteId}`;
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = true;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error(error);
+        alert('Error al descargar PDF');
       }
     }
 
