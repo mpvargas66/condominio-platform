@@ -2552,11 +2552,6 @@
         return;
       }
 
-      // Validar que Comité tenga temas
-      if (tipo === 'comite' && temasTemp.length === 0) {
-        alert('Agrega al menos 1 tema al acta de comité');
-        return;
-      }
 
       // Validar quórum para asambleas
       if (tipo.includes('asamblea')) {
