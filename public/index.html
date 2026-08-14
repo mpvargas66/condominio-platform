@@ -2582,13 +2582,6 @@
           return;
         }
 
-        // Extraer temas del textarea
-        const temasTexto = document.getElementById('acta-temas').value;
-        const temas = temasTexto
-          .split('\n')
-          .map(t => t.trim())
-          .filter(t => t.length > 0);
-
         let contenidoActa = `# ACTA ${tipo.toUpperCase()}\n\n`;
         contenidoActa += `**Fecha:** ${fecha_reunion}\n`;
         contenidoActa += `**Hora:** ${hora_inicio} - ${hora_cierre}\n`;
@@ -2609,8 +2602,7 @@
             hora_inicio,
             hora_cierre,
             lugar,
-            contenido: contenidoActa,
-            temas: temas
+            contenido: contenidoActa
           })
         });
 
