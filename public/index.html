@@ -2278,7 +2278,16 @@
             `).join('')
           : '';
 
-        document.getElementById('temas-lista').innerHTML = temasListaHtml || '<p class="text-gray-500 text-sm">Sin temas agregados</p>';
+        const agregarTemaHtml = `
+          <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 class="font-bold text-gray-900 mb-2">➕ Agregar Tema</h4>
+            <div class="flex gap-2">
+              <input type="text" id="nuevo-tema-titulo" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título del tema">
+              <button onclick="agregarTemaDesdeModal()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm hover:bg-blue-700">➕ Agregar</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('temas-lista').innerHTML = (temasListaHtml || '') + agregarTemaHtml;
 
         // Llenar responsables
         const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
@@ -2332,6 +2341,36 @@
       const obs = document.getElementById(`obs-${temaId}`).value;
       await actualizarTema(temaId, 'observaciones', obs);
       alert('✅ Observaciones guardadas');
+    }
+
+    async function agregarTemaDesdeModal() {
+      const titulo = document.getElementById('nuevo-tema-titulo').value.trim();
+
+      if (!titulo) {
+        alert('Escribe el título del tema');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}/temas?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ titulo, estado: 'pendiente' })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('nuevo-tema-titulo').value = '';
+          await abrirActaModal(actaActualId);
+          alert('✅ Tema agregado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al agregar tema');
+      }
     }
 
     async function agregarTemaActa() {
