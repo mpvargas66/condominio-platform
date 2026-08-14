@@ -3,10 +3,13 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+import crypto from 'crypto';
+import { Resend } from 'resend';
 import supabase from '../supabase-client.js';
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -195,6 +198,144 @@ app.delete('/api/usuarios/:id', verificarToken, async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== INVITACIÓN DE USUARIOS ==========
+
+// 1. POST /api/usuarios/:id/enviar-invitacion
+app.post('/api/usuarios/:id/enviar-invitacion', verificarToken, async (req, res) => {
+  try {
+    if (req.usuarioPerfil !== 'admin') {
+      return res.status(403).json({ error: 'Solo admins pueden enviar invitaciones' });
+    }
+
+    const { data: usuario, error: userError } = await supabase
+      .from('usuarios')
+      .select('id, email, nombre')
+      .eq('id', req.params.id)
+      .single();
+
+    if (userError || !usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Generar token único
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
+
+    // Guardar token en password_resets
+    const { error: tokenError } = await supabase
+      .from('password_resets')
+      .insert({
+        usuario_id: usuario.id,
+        token,
+        expires_at: expiresAt.toISOString(),
+        usado: false
+      });
+
+    if (tokenError) throw tokenError;
+
+    // Enviar email con Resend
+    const setPasswordUrl = `${process.env.APP_URL || 'https://comunite.vercel.app'}/set-password?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Comunité <noreply@comunite.app>',
+      to: usuario.email,
+      subject: '¡Bienvenido a Comunité! Completa tu registro',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>¡Hola ${usuario.nombre}!</h2>
+          <p>Has sido invitado a Comunité, la plataforma digital para gobernanza de condominios.</p>
+
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>Tus credenciales de acceso:</h3>
+            <p><strong>Email:</strong> ${usuario.email}</p>
+            <p><strong>Contraseña temporal:</strong> Se generó una contraseña temporal. Debes cambiarla al primer acceso.</p>
+          </div>
+
+          <p style="margin: 20px 0;">
+            <a href="${setPasswordUrl}"
+               style="display: inline-block; padding: 12px 30px; background-color: #6B21A8; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Establecer mi contraseña
+            </a>
+          </p>
+
+          <p>Este enlace expira en 7 días. Si no estableces tu contraseña en ese tiempo, solicita una nueva invitación.</p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+          <p style="color: #6b7280; font-size: 12px;">
+            Si no solicitaste esta invitación, puedes ignorar este email.<br>
+            Comunité - Gobernanza Digital para Condominios
+          </p>
+        </div>
+      `
+    });
+
+    registrarAuditoria(req.usuarioId, 'enviar_invitacion', `Invitación enviada a ${usuario.email}`);
+    res.json({ success: true, email_enviado: true });
+  } catch (error) {
+    console.error('Error enviando invitación:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. POST /api/auth/establecer-contrasena
+app.post('/api/auth/establecer-contrasena', async (req, res) => {
+  try {
+    const { token, contrasena_nueva } = req.body;
+
+    if (!token || !contrasena_nueva) {
+      return res.status(400).json({ error: 'Token y contraseña requeridos' });
+    }
+
+    if (contrasena_nueva.length < 6) {
+      return res.status(400).json({ error: 'Contraseña debe tener al menos 6 caracteres' });
+    }
+
+    // Validar token
+    const { data: resetToken, error: tokenError } = await supabase
+      .from('password_resets')
+      .select('usuario_id, expires_at, usado')
+      .eq('token', token)
+      .single();
+
+    if (tokenError || !resetToken) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    if (resetToken.usado) {
+      return res.status(401).json({ error: 'Token ya fue utilizado' });
+    }
+
+    if (new Date(resetToken.expires_at) < new Date()) {
+      return res.status(401).json({ error: 'Token expirado' });
+    }
+
+    // Hashear nueva contraseña
+    const hashedPassword = await bcrypt.hash(contrasena_nueva, 10);
+
+    // Actualizar contraseña del usuario
+    const { error: updateError } = await supabase
+      .from('usuarios')
+      .update({ contrasena: hashedPassword })
+      .eq('id', resetToken.usuario_id);
+
+    if (updateError) throw updateError;
+
+    // Marcar token como usado
+    const { error: markError } = await supabase
+      .from('password_resets')
+      .update({ usado: true })
+      .eq('token', token);
+
+    if (markError) throw markError;
+
+    res.json({ success: true, mensaje: 'Contraseña establecida correctamente' });
+  } catch (error) {
+    console.error('Error estableciendo contraseña:', error);
     res.status(500).json({ error: error.message });
   }
 });
