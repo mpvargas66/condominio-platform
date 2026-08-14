@@ -947,12 +947,23 @@
           </form>
         </div>
 
-        <!-- TABLA DE ACTAS -->
+        <!-- TABLA DE ACTAS CON CHECKBOXES -->
         <div class="mb-6">
+          <!-- Botón Eliminar Seleccionadas -->
+          <div id="eliminar-container" class="hidden mb-4 flex gap-2">
+            <button onclick="eliminarActasSeleccionadas()" class="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">
+              🗑️ Eliminar Seleccionadas
+            </button>
+            <span id="contador-seleccionadas" class="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg font-medium"></span>
+          </div>
+
           <div class="overflow-x-auto border border-gray-200 rounded-lg">
             <table class="w-full text-sm">
               <thead class="bg-gray-100 border-b border-gray-200">
                 <tr>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900 w-10">
+                    <input type="checkbox" id="check-all" onchange="toggleTodas(this.checked)" class="w-4 h-4">
+                  </th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Nombre</th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Tipo</th>
                   <th class="px-6 py-3 text-left font-medium text-gray-900">Fecha</th>
@@ -961,7 +972,7 @@
                 </tr>
               </thead>
               <tbody id="actas-tbody" class="divide-y divide-gray-200">
-                <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Cargando actas...</td></tr>
+                <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Cargando actas...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2178,14 +2189,19 @@
         });
         const actas = await response.json();
 
+        const puedoEliminar = ['admin', 'presidente', 'secretario'].includes(currentUser?.perfil);
+
         document.getElementById('actas-tbody').innerHTML = actas.map(a => {
           const estadoColor = a.estado === 'completado' ? 'bg-green-100 text-green-900' : a.estado === 'en_revision' ? 'bg-blue-100 text-blue-900' : 'bg-yellow-100 text-yellow-900';
           const estadoLabel = a.estado === 'completado' ? '✓ Completada' : a.estado === 'en_revision' ? '📋 En Revisión' : '⏳ Pendiente';
           const tipoLabel = a.tipo === 'comite' ? 'Comité' : a.tipo === 'asamblea_ordinaria' ? 'Asamblea Ordinaria' : 'Asamblea Extraordinaria';
 
           return `
-            <tr class="hover:bg-gray-50 cursor-pointer transition" onclick="abrirActaModal(${a.id})">
-              <td class="px-6 py-4 font-medium text-gray-900">${a.titulo}</td>
+            <tr class="hover:bg-gray-50 transition" data-acta-id="${a.id}">
+              <td class="px-6 py-4">
+                <input type="checkbox" class="acta-checkbox w-4 h-4" value="${a.id}" onchange="actualizarContador()">
+              </td>
+              <td class="px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-blue-600" onclick="abrirActaModal(${a.id})">${a.titulo}</td>
               <td class="px-6 py-4 text-gray-600">${tipoLabel}</td>
               <td class="px-6 py-4 text-gray-600">${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</td>
               <td class="px-6 py-4">
@@ -2195,13 +2211,86 @@
               </td>
               <td class="px-6 py-4">
                 <button onclick="event.stopPropagation(); abrirActaModal(${a.id})" class="text-blue-600 hover:text-blue-800 font-medium text-sm mr-3">Editar</button>
-                <button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-red-600 hover:text-red-800 font-medium text-sm">Eliminar</button>
+                ${puedoEliminar ? `<button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-red-600 hover:text-red-800 font-medium text-sm">Eliminar</button>` : ''}
               </td>
             </tr>
           `;
-        }).join('') || '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Sin actas</td></tr>';
+        }).join('') || '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Sin actas</td></tr>';
+
+        actualizarContador();
       } catch (error) {
         console.error(error);
+      }
+    }
+
+    function actualizarContador() {
+      const checkboxes = document.querySelectorAll('.acta-checkbox:checked');
+      const container = document.getElementById('eliminar-container');
+      const contador = document.getElementById('contador-seleccionadas');
+
+      if (checkboxes.length > 0) {
+        container.classList.remove('hidden');
+        contador.textContent = `${checkboxes.length} acta${checkboxes.length > 1 ? 's' : ''} seleccionada${checkboxes.length > 1 ? 's' : ''}`;
+      } else {
+        container.classList.add('hidden');
+        document.getElementById('check-all').checked = false;
+      }
+    }
+
+    function toggleTodas(checked) {
+      document.querySelectorAll('.acta-checkbox').forEach(cb => {
+        cb.checked = checked;
+      });
+      actualizarContador();
+    }
+
+    async function eliminarActa(actaId) {
+      if (!confirm('¿Eliminar esta acta?')) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaId}?comite_id=${comiteId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          loadActas();
+          alert('✅ Acta eliminada');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al eliminar acta');
+      }
+    }
+
+    async function eliminarActasSeleccionadas() {
+      const checkboxes = document.querySelectorAll('.acta-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecciona al menos una acta');
+        return;
+      }
+
+      if (!confirm(`¿Eliminar ${checkboxes.length} acta${checkboxes.length > 1 ? 's' : ''}?`)) return;
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+
+        for (const cb of checkboxes) {
+          await fetch(`${API_BASE}/api/actas/${cb.value}?comite_id=${comiteId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
+
+        loadActas();
+        alert(`✅ ${checkboxes.length} acta${checkboxes.length > 1 ? 's' : ''} eliminada${checkboxes.length > 1 ? 's' : ''}`);
+      } catch (error) {
+        console.error(error);
+        alert('Error al eliminar actas');
       }
     }
 
