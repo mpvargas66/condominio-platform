@@ -2269,7 +2269,7 @@
 
         // Renderizar TEMAS (editables)
         const temasArray = acta.temas && Array.isArray(acta.temas) ? acta.temas : [];
-        const temasHtml = temasArray.length > 0
+        const temasListaHtml = temasArray.length > 0
           ? temasArray.map(t => `
               <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div class="mb-2">
@@ -2300,7 +2300,18 @@
                 </div>
               </div>
             `).join('')
-          : '<p class="text-gray-500 text-sm">Sin temas agregados</p>';
+          : '';
+
+        const temasHtml = `
+          <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 class="font-bold text-gray-900 mb-3">➕ Agregar Tema a Orden del Día</h4>
+            <div class="mb-2">
+              <input type="text" id="nuevo-tema-titulo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título del tema">
+            </div>
+            <button onclick="agregarTemaActa()" class="w-full px-3 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm hover:bg-blue-700">➕ Agregar Tema</button>
+          </div>
+          ${temasListaHtml || '<p class="text-gray-500 text-sm">Sin temas agregados</p>'}
+        `;
         document.getElementById('temas-lista').innerHTML = temasHtml;
 
         // Llenar responsables
@@ -2344,6 +2355,36 @@
       } catch (error) {
         console.error(error);
         alert('Error al abrir acta');
+      }
+    }
+
+    async function agregarTemaActa() {
+      const titulo = document.getElementById('nuevo-tema-titulo').value.trim();
+
+      if (!titulo) {
+        alert('Escribe el título del tema');
+        return;
+      }
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}/temas?comite_id=${comiteId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ titulo, estado: 'pendiente' })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('nuevo-tema-titulo').value = '';
+          await abrirActaModal(actaActualId);
+          alert('✅ Tema agregado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al agregar tema');
       }
     }
 
