@@ -2275,7 +2275,9 @@
         document.getElementById('acta-modal-titulo').textContent = acta.titulo;
 
         // Renderizar TEMAS (editables)
+        console.log('🔍 DEBUG abrirActaModal - acta.temas:', acta.temas);
         const temasArray = acta.temas && Array.isArray(acta.temas) ? acta.temas : [];
+        console.log('🔍 DEBUG abrirActaModal - temasArray:', temasArray, 'length:', temasArray.length);
         const temasListaHtml = temasArray.length > 0
           ? temasArray.map(t => `
               <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
