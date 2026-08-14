@@ -479,6 +479,39 @@
     </div>
   </div>
 
+  <!-- SET PASSWORD PAGE -->
+  <div id="setPasswordPage" class="hidden min-h-screen bg-gradient-to-br from-purple-600 to-purple-900 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full">
+      <div class="text-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Comunité</h1>
+        <p class="text-gray-600 mt-2">Establece tu contraseña</p>
+      </div>
+
+      <div id="setPasswordForm">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nueva Contraseña</label>
+          <input type="password" id="newPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="Mínimo 6 caracteres">
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña</label>
+          <input type="password" id="confirmPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="Repite tu contraseña">
+        </div>
+
+        <button onclick="establecerContrasena()" class="w-full px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition">Establecer Contraseña</button>
+
+        <p id="setPasswordError" class="text-red-600 text-sm mt-3 hidden"></p>
+        <p id="setPasswordSuccess" class="text-green-600 text-sm mt-3 hidden"></p>
+      </div>
+
+      <div id="setPasswordSuccess2" class="hidden text-center">
+        <h2 class="text-xl font-bold text-green-600 mb-3">✅ Contraseña establecida</h2>
+        <p class="text-gray-600 mb-4">Tu contraseña ha sido configurada exitosamente.</p>
+        <button onclick="irAlLogin()" class="w-full px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700">Ir a Login</button>
+      </div>
+    </div>
+  </div>
+
   <!-- DASHBOARD -->
   <div id="dashboard" class="hidden">
     <nav class="bg-white shadow">
@@ -1845,6 +1878,77 @@
         console.error(error);
         alert('Error al enviar invitación');
       }
+    }
+
+    function checkSetPasswordPage() {
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('token');
+
+      if (tokenParam) {
+        document.getElementById('landing').classList.add('hidden');
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('registerPage').classList.add('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('setPasswordPage').classList.remove('hidden');
+      }
+    }
+
+    async function establecerContrasena() {
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('token');
+      const newPassword = document.getElementById('newPassword').value.trim();
+      const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+      const errorEl = document.getElementById('setPasswordError');
+      const successEl = document.getElementById('setPasswordSuccess');
+
+      errorEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      // Validaciones
+      if (!newPassword || !confirmPassword) {
+        errorEl.textContent = 'Completa todos los campos';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        errorEl.textContent = 'La contraseña debe tener mínimo 6 caracteres';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        errorEl.textContent = 'Las contraseñas no coinciden';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/establecer-contrasena`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenParam, contrasena_nueva: newPassword })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('setPasswordForm').classList.add('hidden');
+          document.getElementById('setPasswordSuccess2').classList.remove('hidden');
+        } else {
+          errorEl.textContent = data.error || 'Error al establecer contraseña';
+          errorEl.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error(error);
+        errorEl.textContent = 'Error al conectar con el servidor';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    function irAlLogin() {
+      window.location.href = '/';
     }
 
     function showDashboard() {
@@ -3495,6 +3599,9 @@
       document.getElementById('comentarios-proyecto-modal').classList.add('hidden');
       abrirProyectoModal(proyectoActualId);
     }
+
+    // Verificar si hay token de establecer contraseña en la URL
+    checkSetPasswordPage();
   </script>
 </body>
 </html>
