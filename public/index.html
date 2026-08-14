@@ -1826,6 +1826,27 @@
       document.getElementById('templates-modal').classList.add('hidden');
     }
 
+    async function enviarInvitacion(usuarioId) {
+      if (!confirm('¿Enviar invitación a este usuario?')) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/usuarios/${usuarioId}/enviar-invitacion`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          alert('✅ Email de invitación enviado');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al enviar invitación');
+      }
+    }
+
     function showDashboard() {
       setVisibility({ landing: false, loginPage: false, registerPage: false, dashboard: true });
       document.getElementById('user-info').textContent = `${currentUser.nombre} (${currentUser.perfil})`;
@@ -1935,7 +1956,10 @@
             <td class="px-6 py-4 text-gray-600">${u.email}</td>
             <td class="px-6 py-4"><span class="px-3 py-1 bg-purple-100 text-purple-900 text-sm font-bold rounded-full">${u.perfil}</span></td>
             <td class="px-6 py-4"><span class="px-3 py-1 ${u.activo ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900'} text-sm font-bold rounded-full">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
-            <td class="px-6 py-4"><button onclick="deleteUsuario(${u.id})" class="text-red-600 hover:underline text-sm">Desactivar</button></td>
+            <td class="px-6 py-4 flex gap-3">
+              <button onclick="enviarInvitacion(${u.id})" class="text-blue-600 hover:underline text-sm font-bold">📧 Invitar</button>
+              <button onclick="deleteUsuario(${u.id})" class="text-red-600 hover:underline text-sm">Desactivar</button>
+            </td>
           </tr>
         `).join('');
       } catch (error) { console.error(error); }
