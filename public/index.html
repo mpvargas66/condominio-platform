@@ -2301,7 +2301,18 @@
     function descargarPDF(actaId) {
       try {
         const comiteId = localStorage.getItem('comiteSeleccionado');
+
+        console.log('🔍 DEBUG - comiteId:', comiteId);
+        console.log('🔍 DEBUG - actaId:', actaId);
+        console.log('🔍 DEBUG - localStorage keys:', Object.keys(localStorage));
+
+        if (!comiteId) {
+          alert('❌ Comité no seleccionado');
+          return;
+        }
+
         const url = `${API_BASE}/api/actas/${actaId}/pdf?comite_id=${comiteId}`;
+        console.log('🔍 DEBUG - URL:', url);
 
         const link = document.createElement('a');
         link.href = url;
@@ -2310,7 +2321,7 @@
         link.click();
         document.body.removeChild(link);
       } catch (error) {
-        console.error(error);
+        console.error('❌ Error descargarPDF:', error);
         alert('Error al descargar PDF');
       }
     }
