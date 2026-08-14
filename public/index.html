@@ -2246,8 +2246,13 @@
       // Actualizar botones
       ['temas', 'asistentes', 'votaciones'].forEach(t => {
         const btn = document.getElementById(`tab-${t}-btn`);
-        btn.classList.toggle('text-purple-600 border-b-2 border-purple-600', t === tab);
-        btn.classList.toggle('text-gray-600', t !== tab);
+        if (t === tab) {
+          btn.classList.add('text-purple-600', 'border-b-2', 'border-purple-600');
+          btn.classList.remove('text-gray-600');
+        } else {
+          btn.classList.remove('text-purple-600', 'border-b-2', 'border-purple-600');
+          btn.classList.add('text-gray-600');
+        }
       });
     }
 
