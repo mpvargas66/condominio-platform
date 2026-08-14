@@ -2285,7 +2285,8 @@
         });
         contenidoActa += '\n';
 
-        const responseActa = await fetch(`${API_BASE}/api/actas`, {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const responseActa = await fetch(`${API_BASE}/api/actas?comite_id=${comiteId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({
