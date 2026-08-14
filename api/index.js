@@ -611,6 +611,40 @@ app.post('/api/actas/:id/temas', verificarToken, verificarComite, async (req, re
   }
 });
 
+// Actualizar tema individual
+app.put('/api/actas/:id/temas/:temaId', verificarToken, verificarComite, async (req, res) => {
+  try {
+    const { id, temaId } = req.params;
+    const { estado, observaciones, responsable_id } = req.body;
+    const comiteId = req.query.comite_id;
+
+    if (!comiteId) {
+      return res.status(400).json({ error: 'comite_id requerido' });
+    }
+
+    const updateData = {};
+    if (estado) updateData.estado = estado;
+    if (observaciones !== undefined) updateData.observaciones = observaciones;
+    if (responsable_id !== undefined) updateData.responsable_id = responsable_id;
+
+    updateData.fecha_actualizacion = new Date();
+
+    const { data, error } = await supabase
+      .from('temas_actas')
+      .update(updateData)
+      .eq('id', temaId)
+      .eq('acta_id', id)
+      .select();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ACTUALIZADO: Agregar verificarComite
 app.get('/api/actas/:id/temas', verificarToken, verificarComite, async (req, res) => {
   try {
