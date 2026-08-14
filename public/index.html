@@ -947,19 +947,23 @@
           </form>
         </div>
 
-        <!-- ACTAS: EN SESIÓN ACTUAL -->
-        <div class="mb-8">
-          <h3 class="text-xl font-bold text-gray-900 mb-4">🔴 En Sesión Actual</h3>
-          <div id="actas-en-sesion" class="space-y-3">
-            <p class="text-gray-500">Cargando...</p>
-          </div>
-        </div>
-
-        <!-- ACTAS: COMPLETADAS -->
-        <div>
-          <h3 class="text-xl font-bold text-gray-900 mb-4">✅ Completadas</h3>
-          <div id="actas-completadas" class="space-y-3">
-            <p class="text-gray-500">Cargando...</p>
+        <!-- TABLA DE ACTAS -->
+        <div class="mb-6">
+          <div class="overflow-x-auto border border-gray-200 rounded-lg">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-100 border-b border-gray-200">
+                <tr>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">Nombre</th>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">Tipo</th>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">Fecha</th>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">Estado</th>
+                  <th class="px-6 py-3 text-left font-medium text-gray-900">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="actas-tbody" class="divide-y divide-gray-200">
+                <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Cargando actas...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -2174,32 +2178,28 @@
         });
         const actas = await response.json();
 
-        // Separar por estado
-        const enSesion = actas.filter(a => a.estado !== 'completado');
-        const completadas = actas.filter(a => a.estado === 'completado');
+        document.getElementById('actas-tbody').innerHTML = actas.map(a => {
+          const estadoColor = a.estado === 'completado' ? 'bg-green-100 text-green-900' : a.estado === 'en_revision' ? 'bg-blue-100 text-blue-900' : 'bg-yellow-100 text-yellow-900';
+          const estadoLabel = a.estado === 'completado' ? '✓ Completada' : a.estado === 'en_revision' ? '📋 En Revisión' : '⏳ Pendiente';
+          const tipoLabel = a.tipo === 'comite' ? 'Comité' : a.tipo === 'asamblea_ordinaria' ? 'Asamblea Ordinaria' : 'Asamblea Extraordinaria';
 
-        // Renderizar EN SESIÓN
-        document.getElementById('actas-en-sesion').innerHTML = enSesion.map(a => `
-          <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded cursor-pointer hover:shadow-lg transition" onclick="abrirActaModal(${a.id})">
-            <h4 class="font-bold text-gray-900">${a.titulo}</h4>
-            <p class="text-sm text-gray-600">Tipo: ${a.tipo} | Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</p>
-            <div class="mt-2 flex gap-2">
-              <button onclick="event.stopPropagation(); descargarPDF(${a.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">📄 PDF</button>
-              <button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">🗑️</button>
-            </div>
-          </div>
-        `).join('') || '<p class="text-gray-500">Sin actas en sesión</p>';
-
-        // Renderizar COMPLETADAS
-        document.getElementById('actas-completadas').innerHTML = completadas.map(a => `
-          <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded cursor-pointer hover:shadow-lg transition" onclick="abrirActaModal(${a.id})">
-            <h4 class="font-bold text-gray-900">✅ ${a.titulo}</h4>
-            <p class="text-sm text-gray-600">Tipo: ${a.tipo} | Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</p>
-            <div class="mt-2 flex gap-2">
-              <button onclick="event.stopPropagation(); descargarPDF(${a.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">📄 PDF</button>
-            </div>
-          </div>
-        `).join('') || '<p class="text-gray-500">Sin actas completadas</p>';
+          return `
+            <tr class="hover:bg-gray-50 cursor-pointer transition" onclick="abrirActaModal(${a.id})">
+              <td class="px-6 py-4 font-medium text-gray-900">${a.titulo}</td>
+              <td class="px-6 py-4 text-gray-600">${tipoLabel}</td>
+              <td class="px-6 py-4 text-gray-600">${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</td>
+              <td class="px-6 py-4">
+                <span class="px-3 py-1 rounded text-sm font-medium ${estadoColor}">
+                  ${estadoLabel}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <button onclick="event.stopPropagation(); abrirActaModal(${a.id})" class="text-blue-600 hover:text-blue-800 font-medium text-sm mr-3">Editar</button>
+                <button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-red-600 hover:text-red-800 font-medium text-sm">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        }).join('') || '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Sin actas</td></tr>';
       } catch (error) {
         console.error(error);
       }
