@@ -2275,6 +2275,14 @@
       }
 
       try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        console.log('🔍 DEBUG handleNewActa - comiteId:', comiteId);
+
+        if (!comiteId) {
+          alert('❌ Comité no seleccionado. Por favor selecciona un comité');
+          return;
+        }
+
         let contenidoActa = `# ACTA ${tipo.toUpperCase()}\n\n`;
         contenidoActa += `**Fecha:** ${fecha_reunion}\n`;
         contenidoActa += `**Hora:** ${hora_inicio} - ${hora_cierre}\n`;
@@ -2285,7 +2293,6 @@
         });
         contenidoActa += '\n';
 
-        const comiteId = localStorage.getItem('comiteSeleccionado');
         const responseActa = await fetch(`${API_BASE}/api/actas?comite_id=${comiteId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
