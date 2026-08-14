@@ -513,17 +513,32 @@ app.put('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
 // ACTUALIZADO: Agregar verificarComite y filtro comite_id
 app.delete('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
   try {
+    const { id } = req.params;
+    const comiteId = req.query.comite_id;
+
+    if (!comiteId) {
+      return res.status(400).json({ error: 'comite_id requerido' });
+    }
+
+    // 1. Eliminar temas primero (cascada)
+    await supabase
+      .from('temas_actas')
+      .delete()
+      .eq('acta_id', id);
+
+    // 2. Luego eliminar la acta
     const { error } = await supabase
       .from('actas')
       .delete()
-      .eq('id', req.params.id)
-      .eq('comite_id', req.comiteId);  // NUEVO: filtro comite_id
+      .eq('id', id)
+      .eq('comite_id', comiteId);
 
     if (error) throw error;
 
-    registrarAuditoria(req.usuarioId, 'eliminar_acta', `Acta ${req.params.id}`);
+    registrarAuditoria(req.usuarioId, 'eliminar_acta', `Acta ${id}`);
     res.json({ success: true });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });
