@@ -975,22 +975,63 @@
           </form>
         </div>
 
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-gray-100 border-b border-gray-200">
-              <tr>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Título</th>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Tipo</th>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Estado</th>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Autor</th>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Fecha</th>
-                <th class="px-6 py-3 text-left text-sm font-bold text-gray-900">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="actas-tbody" class="divide-y divide-gray-200">
-              <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Cargando...</td></tr>
-            </tbody>
-          </table>
+        <!-- ACTAS: EN SESIÓN ACTUAL -->
+        <div class="mb-8">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">🔴 En Sesión Actual</h3>
+          <div id="actas-en-sesion" class="space-y-3">
+            <p class="text-gray-500">Cargando...</p>
+          </div>
+        </div>
+
+        <!-- ACTAS: COMPLETADAS -->
+        <div>
+          <h3 class="text-xl font-bold text-gray-900 mb-4">✅ Completadas</h3>
+          <div id="actas-completadas" class="space-y-3">
+            <p class="text-gray-500">Cargando...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Editar Acta en Sesión -->
+      <div id="editar-acta-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="acta-modal-titulo" class="text-2xl font-bold text-gray-900"></h2>
+            <button onclick="cerrarActaModal()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+          </div>
+
+          <!-- TABS: Temas | Asistentes | Votaciones -->
+          <div class="flex gap-4 mb-4 border-b border-gray-200">
+            <button onclick="switchActaTab('temas')" id="tab-temas-btn" class="pb-2 font-bold text-purple-600 border-b-2 border-purple-600">📋 Temas</button>
+            <button onclick="switchActaTab('asistentes')" id="tab-asistentes-btn" class="pb-2 font-bold text-gray-600">👥 Asistentes</button>
+            <button onclick="switchActaTab('votaciones')" id="tab-votaciones-btn" class="pb-2 font-bold text-gray-600">🗳️ Votaciones</button>
+          </div>
+
+          <!-- TAB: TEMAS (con edición) -->
+          <div id="tab-temas" class="mb-4">
+            <div id="temas-lista" class="space-y-3">
+              <p class="text-gray-500">Cargando temas...</p>
+            </div>
+          </div>
+
+          <!-- TAB: ASISTENTES -->
+          <div id="tab-asistentes" class="hidden mb-4">
+            <div id="asistentes-lista" class="space-y-2">
+              <p class="text-gray-500">Cargando asistentes...</p>
+            </div>
+          </div>
+
+          <!-- TAB: VOTACIONES -->
+          <div id="tab-votaciones" class="hidden mb-4">
+            <div id="votaciones-lista" class="space-y-2">
+              <p class="text-gray-500">Cargando votaciones...</p>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-6">
+            <button onclick="marcarActaCompletada()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">✅ Marcar Completada</button>
+            <button onclick="cerrarActaModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">Cerrar</button>
+          </div>
         </div>
       </div>
 
@@ -2159,21 +2200,170 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const actas = await response.json();
-        document.getElementById('actas-tbody').innerHTML = actas.map(a => `
-          <tr>
-            <td class="px-6 py-4 font-medium text-gray-900">${a.titulo}</td>
-            <td class="px-6 py-4 text-gray-600">${a.tipo}</td>
-            <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-100 text-blue-900 text-xs font-bold rounded">${a.estado}</span></td>
-            <td class="px-6 py-4 text-sm text-gray-600">${a.usuario_nombre}</td>
-            <td class="px-6 py-4 text-sm text-gray-600">${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</td>
-            <td class="px-6 py-4 flex gap-2">
-              <button onclick="editarActa(${a.id})" class="text-blue-600 hover:underline text-sm font-bold">Editar</button>
-              <button onclick="descargarPDF(${a.id})" class="text-green-600 hover:underline text-sm font-bold">📄 PDF</button>
-              <button onclick="eliminarActa(${a.id})" class="text-red-600 hover:underline text-sm font-bold">Eliminar</button>
-            </td>
-          </tr>
+
+        // Separar por estado
+        const enSesion = actas.filter(a => a.estado !== 'completado');
+        const completadas = actas.filter(a => a.estado === 'completado');
+
+        // Renderizar EN SESIÓN
+        document.getElementById('actas-en-sesion').innerHTML = enSesion.map(a => `
+          <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded cursor-pointer hover:shadow-lg transition" onclick="abrirActaModal(${a.id})">
+            <h4 class="font-bold text-gray-900">${a.titulo}</h4>
+            <p class="text-sm text-gray-600">Tipo: ${a.tipo} | Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</p>
+            <div class="mt-2 flex gap-2">
+              <button onclick="event.stopPropagation(); descargarPDF(${a.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">📄 PDF</button>
+              <button onclick="event.stopPropagation(); eliminarActa(${a.id})" class="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">🗑️</button>
+            </div>
+          </div>
+        `).join('') || '<p class="text-gray-500">Sin actas en sesión</p>';
+
+        // Renderizar COMPLETADAS
+        document.getElementById('actas-completadas').innerHTML = completadas.map(a => `
+          <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded cursor-pointer hover:shadow-lg transition" onclick="abrirActaModal(${a.id})">
+            <h4 class="font-bold text-gray-900">✅ ${a.titulo}</h4>
+            <p class="text-sm text-gray-600">Tipo: ${a.tipo} | Fecha: ${new Date(a.fecha_creacion).toLocaleDateString('es-CL')}</p>
+            <div class="mt-2 flex gap-2">
+              <button onclick="event.stopPropagation(); descargarPDF(${a.id})" class="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">📄 PDF</button>
+            </div>
+          </div>
+        `).join('') || '<p class="text-gray-500">Sin actas completadas</p>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    let actaActualId = null;
+    let actaTabActual = 'temas';
+
+    function switchActaTab(tab) {
+      actaTabActual = tab;
+
+      // Ocultar/mostrar tabs
+      document.getElementById('tab-temas').classList.toggle('hidden', tab !== 'temas');
+      document.getElementById('tab-asistentes').classList.toggle('hidden', tab !== 'asistentes');
+      document.getElementById('tab-votaciones').classList.toggle('hidden', tab !== 'votaciones');
+
+      // Actualizar botones
+      ['temas', 'asistentes', 'votaciones'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}-btn`);
+        btn.classList.toggle('text-purple-600 border-b-2 border-purple-600', t === tab);
+        btn.classList.toggle('text-gray-600', t !== tab);
+      });
+    }
+
+    async function abrirActaModal(actaId) {
+      try {
+        actaActualId = actaId;
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const acta = await response.json();
+
+        document.getElementById('acta-modal-titulo').textContent = acta.titulo;
+
+        // Renderizar TEMAS (editables)
+        document.getElementById('temas-lista').innerHTML = (acta.temas || []).map(t => `
+          <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="mb-2">
+              <p class="font-bold text-gray-900">${t.numero}. ${t.titulo}</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-xs font-medium text-gray-700">Estado</label>
+                <select onchange="actualizarTema(${t.id}, 'estado', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                  <option value="pendiente" ${t.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                  <option value="en_revision" ${t.estado === 'en_revision' ? 'selected' : ''}>En Revisión</option>
+                  <option value="completado" ${t.estado === 'completado' ? 'selected' : ''}>Completado</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-700">Responsable</label>
+                <select onchange="actualizarTema(${t.id}, 'responsable_id', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm responsable-select">
+                  <option value="">Sin asignar</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-xs font-medium text-gray-700">Observaciones</label>
+                <input type="text" onchange="actualizarTema(${t.id}, 'observaciones', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Notas..." value="${t.observaciones || ''}">
+              </div>
+            </div>
+          </div>
         `).join('');
-      } catch (error) { console.error(error); }
+
+        // Llenar responsables
+        const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+        document.querySelectorAll('.responsable-select').forEach(select => {
+          select.innerHTML = '<option value="">Sin asignar</option>';
+          usuarios.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.nombre;
+            select.appendChild(opt);
+          });
+        });
+
+        // Renderizar ASISTENTES
+        document.getElementById('asistentes-lista').innerHTML = (acta.asistentes || []).map(a => `
+          <div class="p-2 bg-gray-50 rounded text-sm border border-gray-200">
+            <p class="font-medium">${a.nombre}</p>
+            <p class="text-xs text-gray-600">${a.rol} - ${a.presente ? '✅ Presente' : '❌ Ausente'}</p>
+          </div>
+        `).join('') || '<p class="text-gray-500 text-sm">Sin asistentes</p>';
+
+        // Renderizar VOTACIONES
+        document.getElementById('votaciones-lista').innerHTML = (acta.votaciones || []).map(v => `
+          <div class="p-2 bg-gray-50 rounded text-sm border border-gray-200">
+            <p class="font-medium">${v.titulo}</p>
+            <p class="text-xs text-gray-600">A favor: ${v.a_favor} | En contra: ${v.en_contra} | Abstenciones: ${v.abstenciones}</p>
+          </div>
+        `).join('') || '<p class="text-gray-500 text-sm">Sin votaciones</p>';
+
+        switchActaTab('temas');
+        document.getElementById('editar-acta-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+        alert('Error al abrir acta');
+      }
+    }
+
+    async function actualizarTema(temaId, campo, valor) {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/actas/${actaActualId}/temas/${temaId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ [campo]: valor })
+        });
+        await abrirActaModal(actaActualId);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function marcarActaCompletada() {
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        await fetch(`${API_BASE}/api/actas/${actaActualId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ estado: 'completado' })
+        });
+        cerrarActaModal();
+        loadActas();
+        alert('✅ Acta marcada como completada');
+      } catch (error) {
+        console.error(error);
+        alert('Error al marcar acta');
+      }
+    }
+
+    function cerrarActaModal() {
+      document.getElementById('editar-acta-modal').classList.add('hidden');
+      actaActualId = null;
     }
 
     async function descargarPDF(actaId) {
