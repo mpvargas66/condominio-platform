@@ -2406,14 +2406,21 @@
     async function actualizarTema(temaId, campo, valor) {
       try {
         const comiteId = localStorage.getItem('comiteSeleccionado');
-        await fetch(`${API_BASE}/api/actas/${actaActualId}/temas/${temaId}?comite_id=${comiteId}`, {
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}/temas/${temaId}?comite_id=${comiteId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ [campo]: valor })
         });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Error updating tema');
+        }
+
         await abrirActaModal(actaActualId);
       } catch (error) {
-        console.error(error);
+        console.error('Error actualizando tema:', error);
+        alert('Error: ' + error.message);
       }
     }
 
