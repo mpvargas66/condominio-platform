@@ -388,17 +388,45 @@ app.get('/api/actas/:id', verificarToken, verificarComite, async (req, res) => {
       .from('actas')
       .select('*, usuarios(nombre)')
       .eq('id', req.params.id)
-      .eq('comite_id', req.comiteId)  // NUEVO: filtro comite_id
+      .eq('comite_id', req.comiteId)
       .single();
 
     if (error || !acta) return res.status(404).json({ error: 'Acta no encontrada' });
 
+    // Traer temas asociados
+    const { data: temas } = await supabase
+      .from('temas_actas')
+      .select('*')
+      .eq('acta_id', req.params.id)
+      .order('numero', { ascending: true });
+
+    // Traer asistentes asociados
+    const { data: asistentes } = await supabase
+      .from('asistentes_actas')
+      .select('*')
+      .eq('acta_id', req.params.id)
+      .order('nombre', { ascending: true });
+
+    // Traer votaciones asociadas
+    const { data: votaciones } = await supabase
+      .from('votaciones_actas')
+      .select('*')
+      .eq('acta_id', req.params.id)
+      .order('numero', { ascending: true });
+
+    // Traer firmas asociadas
     const { data: firmas } = await supabase
       .from('firmas_actas')
       .select('*, usuarios(nombre)')
       .eq('acta_id', req.params.id);
 
-    res.json({ ...acta, firmas });
+    res.json({
+      ...acta,
+      temas: temas || [],
+      asistentes: asistentes || [],
+      votaciones: votaciones || [],
+      firmas: firmas || []
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
