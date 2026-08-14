@@ -2263,7 +2263,7 @@
 
                   <div>
                     <label class="text-xs font-medium text-gray-700">Responsable</label>
-                    <select onchange="actualizarTema(${t.id}, 'responsable_id', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm responsable-select">
+                    <select onchange="actualizarTema(${t.id}, 'responsable_id', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm responsable-select" data-tema-responsable="${t.responsable_id || ''}">
                       <option value="">Sin asignar</option>
                     </select>
                   </div>
@@ -2293,10 +2293,14 @@
         const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
         document.querySelectorAll('.responsable-select').forEach(select => {
           select.innerHTML = '<option value="">Sin asignar</option>';
+          const temaResponsableId = select.dataset.temaResponsable;
           usuarios.forEach(u => {
             const opt = document.createElement('option');
             opt.value = u.id;
             opt.textContent = u.nombre;
+            if (String(u.id) === String(temaResponsableId)) {
+              opt.selected = true;
+            }
             select.appendChild(opt);
           });
         });
