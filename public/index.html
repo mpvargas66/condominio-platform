@@ -1036,7 +1036,7 @@
 
           <div class="flex gap-2 mt-6">
             <button onclick="guardarActaEnRevision()" class="flex-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">💾 Guardar en Revisión</button>
-            <button onclick="marcarActaCompletada()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700">✅ Completada</button>
+            <button id="btn-completada" onclick="marcarActaCompletada()" class="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">✅ Completada</button>
             <button onclick="cerrarActaModal()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-900 font-bold rounded-lg hover:bg-gray-400">✕ Cerrar</button>
           </div>
         </div>
@@ -2304,24 +2304,15 @@
 
                   <div>
                     <label class="text-xs font-medium text-gray-700">Observaciones</label>
-                    <input type="text" onchange="actualizarTema(${t.id}, 'observaciones', this.value)" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" placeholder="Notas..." value="${t.observaciones || ''}">
+                    <textarea id="obs-${t.id}" class="w-full px-2 py-1 border border-gray-300 rounded text-sm h-12" placeholder="Notas...">${t.observaciones || ''}</textarea>
+                    <button onclick="guardarObservaciones(${t.id})" class="mt-1 w-full px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">💾 Guardar</button>
                   </div>
                 </div>
               </div>
             `).join('')
           : '';
 
-        const temasHtml = `
-          <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 class="font-bold text-gray-900 mb-3">➕ Agregar Tema a Orden del Día</h4>
-            <div class="mb-2">
-              <input type="text" id="nuevo-tema-titulo" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título del tema">
-            </div>
-            <button onclick="agregarTemaActa()" class="w-full px-3 py-2 bg-blue-600 text-white font-bold rounded-lg text-sm hover:bg-blue-700">➕ Agregar Tema</button>
-          </div>
-          ${temasListaHtml || '<p class="text-gray-500 text-sm">Sin temas agregados</p>'}
-        `;
-        document.getElementById('temas-lista').innerHTML = temasHtml;
+        document.getElementById('temas-lista').innerHTML = temasListaHtml || '<p class="text-gray-500 text-sm">Sin temas agregados</p>';
 
         // Llenar responsables
         const usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
@@ -2359,12 +2350,22 @@
           : '<p class="text-gray-500 text-sm">Sin votaciones</p>';
         document.getElementById('votaciones-lista').innerHTML = votacionesHtml;
 
+        // Verificar si todos los temas están completos para habilitar botón
+        const todosCompletos = (acta.temas || []).every(t => t.estado === 'completado');
+        document.getElementById('btn-completada').disabled = !todosCompletos;
+
         switchActaTab('temas');
         document.getElementById('editar-acta-modal').classList.remove('hidden');
       } catch (error) {
         console.error(error);
         alert('Error al abrir acta');
       }
+    }
+
+    async function guardarObservaciones(temaId) {
+      const obs = document.getElementById(`obs-${temaId}`).value;
+      await actualizarTema(temaId, 'observaciones', obs);
+      alert('✅ Observaciones guardadas');
     }
 
     async function agregarTemaActa() {
@@ -2422,32 +2423,50 @@
 
         const data = await response.json();
         if (data.success) {
+          cerrarActaModal();
           loadActas();
           alert('✅ Acta guardada en revisión');
-          cerrarActaModal();
         } else {
           alert('Error: ' + data.error);
         }
       } catch (error) {
         console.error(error);
-        alert('Error al guardar acta');
+        alert('Error al guardar');
       }
     }
 
     async function marcarActaCompletada() {
       try {
         const comiteId = localStorage.getItem('comiteSeleccionado');
-        await fetch(`${API_BASE}/api/actas/${actaActualId}?comite_id=${comiteId}`, {
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}?comite_id=${comiteId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const acta = await response.json();
+
+        // Verificar que TODOS los temas sean completado
+        const todosCompletados = acta.temas && acta.temas.every(t => t.estado === 'completado');
+
+        if (!todosCompletados) {
+          alert('❌ Todos los temas deben estar completados');
+          return;
+        }
+
+        // Si todos están completos, marcar acta como completada
+        const updateResponse = await fetch(`${API_BASE}/api/actas/${actaActualId}?comite_id=${comiteId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ estado: 'completado' })
         });
-        cerrarActaModal();
-        loadActas();
-        alert('✅ Acta marcada como completada');
+
+        const updateData = await updateResponse.json();
+        if (updateData.success) {
+          cerrarActaModal();
+          loadActas();
+          alert('✅ Acta marcada como completada');
+        }
       } catch (error) {
         console.error(error);
-        alert('Error al marcar acta');
+        alert('Error al completar acta');
       }
     }
 
