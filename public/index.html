@@ -2661,7 +2661,6 @@
       temasTemp = [];
       asistentesTemp = [];
       votacionesTemp = [];
-      renderTemasLista();
       renderAsistentes();
       renderVotaciones();
       onActaTipoChange();
@@ -2913,35 +2912,8 @@
 
       temasTemp.push(tema);
       document.getElementById('tema-titulo-nuevo').value = '';
-      renderTemasLista();
     }
 
-    function renderTemasLista() {
-      const tbody = document.getElementById('temas-tbody');
-
-      if (temasTemp.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500 text-sm">Sin temas agregados</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = temasTemp.map(t => {
-        const estaCompletado = t.estado === 'completado';
-        const badgeColor = estaCompletado ? 'bg-green-100 text-green-900' : 'bg-yellow-100 text-yellow-900';
-        const badgeTexto = estaCompletado ? '✅ Completado' : '⏳ Pendiente';
-
-        return `
-          <tr class="${estaCompletado ? 'bg-green-50' : ''}">
-            <td class="px-4 py-3 font-bold">${t.numero}</td>
-            <td class="px-4 py-3">${t.titulo}</td>
-            <td class="px-4 py-3 text-center"><span class="px-3 py-1 ${badgeColor} text-xs font-bold rounded">${badgeTexto}</span></td>
-            <td class="px-4 py-3 text-center flex gap-2 justify-center">
-              <button type="button" onclick="abrirEditorTema(${t.id})" class="text-blue-600 hover:underline text-xs font-bold ${estaCompletado ? 'opacity-50' : ''}">Editar</button>
-              <button type="button" onclick="eliminarTema(${t.id})" class="text-red-600 hover:underline text-xs font-bold">Eliminar</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
 
     function abrirEditorTema(temaId) {
       const tema = temasTemp.find(t => t.id === temaId);
@@ -2978,7 +2950,6 @@
       tema.estado = 'completado';
 
       cerrarEditorTema();
-      renderTemasLista();
 
       const siguientePendiente = temasTemp.find(t => t.estado === 'pendiente');
       if (siguientePendiente) {
@@ -3003,8 +2974,6 @@
       temasTemp.forEach((t, idx) => {
         t.numero = idx + 1;
       });
-
-      renderTemasLista();
     }
 
     // ========== VOTACIONES ==========
