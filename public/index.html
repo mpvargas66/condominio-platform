@@ -2343,8 +2343,25 @@
 
     async function guardarObservaciones(temaId) {
       const obs = document.getElementById(`obs-${temaId}`).value;
-      await actualizarTema(temaId, 'observaciones', obs);
-      alert('✅ Observaciones guardadas');
+
+      try {
+        const comiteId = localStorage.getItem('comiteSeleccionado');
+        const response = await fetch(`${API_BASE}/api/actas/${actaActualId}/temas/${temaId}?comite_id=${comiteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ observaciones: obs })
+        });
+
+        const data = await response.json();
+        if (data.success || response.ok) {
+          alert('✅ Observaciones guardadas');
+        } else {
+          throw new Error(data.error || 'Error al guardar');
+        }
+      } catch (error) {
+        console.error('Error guardando observaciones:', error);
+        alert('Error: ' + error.message);
+      }
     }
 
     async function agregarTemaDesdeModal() {
