@@ -460,39 +460,42 @@ app.get('/api/actas/:id/pdf', verificarToken, verificarComite, async (req, res) 
       .eq('acta_id', id)
       .order('numero', { ascending: true });
 
-    const doc = new PDFDocument({ margin: 40 });
+    const doc = new PDFDocument({ margin: 40, bufferPages: true });
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="Acta-${acta.titulo.replace(/\s+/g, '-')}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Acta-${acta.id}.pdf"`);
+
+    doc.on('error', (err) => {
+      console.error('PDF Error:', err);
+      res.status(500).json({ error: 'Error generando PDF: ' + err.message });
+    });
+
     doc.pipe(res);
 
-    doc.fontSize(18).font('Helvetica-Bold').text('ACTA', { align: 'center' }).moveDown(0.2);
-    doc.fontSize(14).font('Helvetica').text(acta.titulo, { align: 'center' }).moveDown(1);
+    doc.fontSize(18).font('Helvetica').text('ACTA', { align: 'center' }).moveDown(0.2);
+    doc.fontSize(14).text(acta.titulo, { align: 'center' }).moveDown(1);
 
-    doc.fontSize(11).font('Helvetica-Bold').text('Información General:', { underline: true }).moveDown(0.3);
-    doc.fontSize(10).font('Helvetica');
+    doc.fontSize(11).text('Información General:', { underline: true }).moveDown(0.3);
+    doc.fontSize(10);
     doc.text(`Tipo: ${acta.tipo === 'comite' ? 'Comité' : acta.tipo === 'asamblea_ordinaria' ? 'Asamblea Ordinaria' : 'Asamblea Extraordinaria'}`);
-    doc.text(`Fecha de reunión: ${new Date(acta.fecha_reunion).toLocaleDateString('es-CL')}`);
-    doc.text(`Hora: ${acta.hora_inicio} - ${acta.hora_cierre}`);
-    doc.text(`Lugar: ${acta.lugar}`);
-    doc.text(`Autor: ${acta.usuarios.nombre}`);
-    doc.text(`Estado: ${acta.estado === 'completado' ? '✓ Completada' : acta.estado === 'en_revision' ? '📋 En Revisión' : '⏳ Pendiente'}`);
+    doc.text(`Fecha: ${new Date(acta.fecha_reunion).toLocaleDateString('es-CL')}`);
+    doc.text(`Hora: ${acta.hora_inicio || '-'} - ${acta.hora_cierre || '-'}`);
+    doc.text(`Lugar: ${acta.lugar || '-'}`);
+    doc.text(`Autor: ${acta.usuarios?.nombre || '-'}`);
+    doc.text(`Estado: ${acta.estado}`);
     doc.moveDown(1);
 
     if (temas && temas.length > 0) {
-      doc.fontSize(11).font('Helvetica-Bold').text('Orden del Día:', { underline: true }).moveDown(0.3);
+      doc.fontSize(11).text('Orden del Día:', { underline: true }).moveDown(0.3);
 
       temas.forEach((tema, idx) => {
-        doc.fontSize(10).font('Helvetica-Bold').text(`${idx + 1}. ${tema.titulo}`, { continued: true });
-        doc.font('Helvetica').text(` [${tema.estado}]`).moveDown(0.2);
+        doc.fontSize(10).text(`${idx + 1}. ${tema.titulo} [${tema.estado}]`).moveDown(0.2);
 
         if (tema.observaciones) {
           doc.fontSize(9).text(`Observaciones: ${tema.observaciones}`).moveDown(0.1);
         }
-        if (tema.responsable) {
-          doc.text(`Responsable: ${tema.responsable}`).moveDown(0.1);
-        }
 
-        doc.moveDown(0.3);
+        doc.moveDown(0.2);
       });
     }
 
